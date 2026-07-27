@@ -7,7 +7,7 @@
 
 ## 1. Yönetici özeti
 
-Proje Empty Activity tabanından çalışan bir local-first ürün çekirdeğine taşınmıştır. Mevcut uygulamada Room, DataStore, Hilt, Navigation Compose, modern tema, onboarding, hızlı kayıt, kayıt arşivi, günlük sağlık formu, temel analiz ve ayarlar ekranları çalışmaktadır.
+Proje Empty Activity tabanından çalışan bir local-first ürün çekirdeğine taşınmıştır. Mevcut uygulamada Room, DataStore, Hilt, Navigation Compose, modern tema, onboarding, hızlı kayıt, kayıt arşivi, günlük sağlık formu, temel analiz, ayarlar ve yürürlük tarihli değer geçmişine sahip ürün yönetimi çalışmaktadır.
 
 Son doğrulanan komutlar:
 
@@ -57,7 +57,7 @@ Bu belge gereksinim metnini yeniden yazmak yerine, onu uygulanabilir teknik kara
 | UI | Onboarding ve beş ana sekme çalışıyor | Gelişmiş alt akışlar yol haritasında |
 | Compose | Material 3 ve Compose BOM | Aktif |
 | Tema | Özel açık/koyu editorial tema | Sistem/açık/koyu seçimli |
-| Veri | Room v2 ve Preferences DataStore | Ürün revizyonu için v3 sırada |
+| Veri | Room v3, ürün revizyonları ve Preferences DataStore | Aktif |
 | DI | Hilt | Aktif |
 | Navigasyon | Navigation Compose, beş alt sekme | Aktif |
 | Arka plan işi | WorkManager yok | Bildirim zamanlaması yok |

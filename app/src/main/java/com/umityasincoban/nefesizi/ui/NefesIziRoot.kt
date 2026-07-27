@@ -35,6 +35,7 @@ import androidx.navigation.compose.rememberNavController
 import com.umityasincoban.nefesizi.feature.analytics.AnalyticsScreen
 import com.umityasincoban.nefesizi.feature.health.HealthScreen
 import com.umityasincoban.nefesizi.feature.onboarding.OnboardingScreen
+import com.umityasincoban.nefesizi.feature.products.ProductManagementScreen
 import com.umityasincoban.nefesizi.feature.records.RecordsScreen
 import com.umityasincoban.nefesizi.feature.settings.SettingsScreen
 import com.umityasincoban.nefesizi.feature.today.TodayScreen
@@ -73,26 +74,29 @@ private fun MainNavigation() {
     val snackbarHostState = remember { SnackbarHostState() }
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
+    val showBottomBar = destinations.any { it.route == currentRoute }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                destinations.forEach { destination ->
-                    NavigationBarItem(
-                        selected = currentRoute == destination.route,
-                        onClick = {
-                            navController.navigate(destination.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+            if (showBottomBar) {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                    destinations.forEach { destination ->
+                        NavigationBarItem(
+                            selected = currentRoute == destination.route,
+                            onClick = {
+                                navController.navigate(destination.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(destination.icon, contentDescription = destination.label) },
-                        label = { Text(destination.label) },
-                    )
+                            },
+                            icon = { Icon(destination.icon, contentDescription = destination.label) },
+                            label = { Text(destination.label) },
+                        )
+                    }
                 }
             }
         },
@@ -106,7 +110,17 @@ private fun MainNavigation() {
             composable("records") { RecordsScreen(snackbarHostState) }
             composable("health") { HealthScreen(snackbarHostState) }
             composable("analytics") { AnalyticsScreen() }
-            composable("settings") { SettingsScreen() }
+            composable("settings") {
+                SettingsScreen(
+                    onOpenProducts = { navController.navigate("product-management") },
+                )
+            }
+            composable("product-management") {
+                ProductManagementScreen(
+                    onBack = { navController.popBackStack() },
+                    snackbarHostState = snackbarHostState,
+                )
+            }
         }
     }
 }

@@ -11,7 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Palette
@@ -23,12 +23,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -36,21 +32,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.umityasincoban.nefesizi.core.data.ThemeMode
 import com.umityasincoban.nefesizi.core.database.CigaretteProductEntity
-import com.umityasincoban.nefesizi.feature.onboarding.OnboardingViewModel
-import com.umityasincoban.nefesizi.feature.products.ProductFormSheet
 
 @Composable
 fun SettingsScreen(
+    onOpenProducts: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
-    productViewModel: OnboardingViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    val productForm by productViewModel.form.collectAsState()
-    var showProductSheet by remember { mutableStateOf(false) }
-    val productCount = state.products.size
-    LaunchedEffect(productCount) {
-        if (productCount > 0) showProductSheet = false
-    }
 
     LazyColumn(
         modifier = Modifier
@@ -99,13 +87,19 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
-                    state.products.forEach { product ->
-                        ProductRow(product, onMakeDefault = { viewModel.setDefaultProduct(product) })
-                    }
+                    state.products.firstOrNull { it.isDefault }?.let { ProductRow(it) }
+                    Text(
+                        "${state.products.size} aktif ürün · fiyat ve değer geçmişi korunur",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                Button(onClick = { showProductSheet = true }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.Add, contentDescription = null)
-                    Text("Yeni ürün ekle", modifier = Modifier.padding(start = 8.dp))
+                Button(onClick = onOpenProducts, modifier = Modifier.fillMaxWidth()) {
+                    Text("Ürünleri yönet")
+                    Icon(
+                        Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
                 }
             }
         }
@@ -137,18 +131,6 @@ fun SettingsScreen(
         }
     }
 
-    if (showProductSheet) {
-        ProductFormSheet(
-            state = productForm,
-            onDismiss = { showProductSheet = false },
-            onNameChange = productViewModel::updateName,
-            onNicotineChange = productViewModel::updateNicotine,
-            onTarChange = productViewModel::updateTar,
-            onCarbonMonoxideChange = productViewModel::updateCarbonMonoxide,
-            onSave = productViewModel::saveProductAndContinue,
-            saveLabel = "Ürünü kaydet",
-        )
-    }
 }
 
 @Composable
@@ -174,12 +156,10 @@ private fun SettingsCard(
 }
 
 @Composable
-private fun ProductRow(product: CigaretteProductEntity, onMakeDefault: () -> Unit) {
+private fun ProductRow(product: CigaretteProductEntity) {
     Surface(
-        onClick = onMakeDefault,
         shape = RoundedCornerShape(18.dp),
-        color = if (product.isDefault) MaterialTheme.colorScheme.secondaryContainer
-        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+        color = MaterialTheme.colorScheme.secondaryContainer,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(13.dp),
@@ -188,14 +168,12 @@ private fun ProductRow(product: CigaretteProductEntity, onMakeDefault: () -> Uni
             Column(modifier = Modifier.weight(1f)) {
                 Text(product.name, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    if (product.isDefault) "Varsayılan hızlı kayıt ürünü" else "Varsayılan yapmak için dokun",
+                    "Varsayılan hızlı kayıt ürünü",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (product.isDefault) {
-                Icon(Icons.Outlined.Check, contentDescription = "Varsayılan ürün")
-            }
+            Icon(Icons.Outlined.Check, contentDescription = "Varsayılan ürün")
         }
     }
 }

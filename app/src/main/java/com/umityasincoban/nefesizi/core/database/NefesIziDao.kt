@@ -13,6 +13,12 @@ interface NefesIziDao {
     @Query("SELECT * FROM cigarette_products WHERE isArchived = 0 ORDER BY isDefault DESC, updatedAtEpochMillis DESC")
     fun observeProducts(): Flow<List<CigaretteProductEntity>>
 
+    @Query("SELECT * FROM cigarette_products ORDER BY isArchived ASC, isDefault DESC, updatedAtEpochMillis DESC")
+    fun observeAllProducts(): Flow<List<CigaretteProductEntity>>
+
+    @Query("SELECT COUNT(*) FROM cigarette_products WHERE isArchived = 0")
+    suspend fun getActiveProductCount(): Int
+
     @Query("SELECT * FROM cigarette_products WHERE isDefault = 1 AND isArchived = 0 LIMIT 1")
     fun observeDefaultProduct(): Flow<CigaretteProductEntity?>
 
@@ -58,6 +64,63 @@ interface NefesIziDao {
         if (product.isDefault) clearDefaultProduct(product.updatedAtEpochMillis)
         upsertProduct(product)
         insertProductRevision(revision)
+    }
+
+    @Transaction
+    suspend fun updateProductWithRevision(
+        product: CigaretteProductEntity,
+        revision: CigaretteProductRevisionEntity?,
+        nowEpochMillis: Long,
+    ) {
+        if (revision != null) insertProductRevision(revision)
+        val current = getProductRevisionAt(product.id, nowEpochMillis)
+        upsertProduct(
+            if (current == null) {
+                product
+            } else {
+                product.copy(
+                    nicotineMicrogramsPerCigarette = current.nicotineMicrogramsPerCigarette,
+                    tarMicrogramsPerCigarette = current.tarMicrogramsPerCigarette,
+                    carbonMonoxideMicrogramsPerCigarette =
+                        current.carbonMonoxideMicrogramsPerCigarette,
+                    priceMicrosPerCigarette = current.priceMicrosPerCigarette,
+                    currencyCode = current.currencyCode,
+                    valueSource = current.valueSource,
+                )
+            },
+        )
+    }
+
+    @Query(
+        """
+        SELECT * FROM cigarette_products
+        WHERE isArchived = 0 AND id != :excludedId
+        ORDER BY updatedAtEpochMillis DESC
+        LIMIT 1
+        """,
+    )
+    suspend fun getDefaultReplacement(excludedId: String): CigaretteProductEntity?
+
+    @Transaction
+    suspend fun setProductArchived(
+        product: CigaretteProductEntity,
+        archived: Boolean,
+        updatedAt: Long,
+    ): Boolean {
+        if (archived && !product.isArchived && getActiveProductCount() <= 1) return false
+        upsertProduct(
+            product.copy(
+                isArchived = archived,
+                isDefault = if (archived) false else product.isDefault,
+                updatedAtEpochMillis = updatedAt,
+            ),
+        )
+        if (archived && product.isDefault) {
+            getDefaultReplacement(product.id)?.let {
+                replaceDefaultProduct(it.copy(updatedAtEpochMillis = updatedAt))
+            }
+        }
+        return true
     }
 
     @Transaction

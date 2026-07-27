@@ -94,4 +94,4 @@ Ayrıntılı geliştirme sırası ve edge-case kararları:
 
 ## Bilinen eksikler
 
-Tam ürün yönetimi, kayıt detay düzenleme, gelişmiş dönem analizleri, JSON/CSV yedekleme, bildirimler, biyometrik kilit ve release sertleştirme yol haritasındaki sırayla geliştirilmektedir.
+Kayıt detay düzenleme, gelişmiş dönem analizleri, JSON/CSV yedekleme, bildirimler, biyometrik kilit ve release sertleştirme yol haritasındaki sırayla geliştirilmektedir.

@@ -26,6 +26,11 @@ class NefesIziRepository @Inject constructor(
 
     fun observeProducts(): Flow<List<CigaretteProductEntity>> = dao.observeProducts()
 
+    fun observeAllProducts(): Flow<List<CigaretteProductEntity>> = dao.observeAllProducts()
+
+    fun observeProductRevisions(productId: String): Flow<List<CigaretteProductRevisionEntity>> =
+        dao.observeProductRevisions(productId)
+
     fun observeAllRecords(): Flow<List<SmokingRecordEntity>> = dao.observeAllRecords()
 
     fun observeRecords(startInclusive: Instant, endExclusive: Instant): Flow<List<SmokingRecordEntity>> =
@@ -74,8 +79,92 @@ class NefesIziRepository @Inject constructor(
     }
 
     suspend fun setDefaultProduct(product: CigaretteProductEntity) {
+        if (product.isArchived) return
         dao.replaceDefaultProduct(product.copy(updatedAtEpochMillis = clock.millis()))
     }
+
+    suspend fun createProduct(
+        identity: ProductIdentityDraft,
+        revisionDraft: ProductRevisionDraft,
+    ): CigaretteProductEntity {
+        val now = clock.millis()
+        val productId = idGenerator.newId()
+        val shouldBeDefault = dao.getActiveProductCount() == 0
+        val product = CigaretteProductEntity(
+            id = productId,
+            name = identity.name.trim(),
+            brand = identity.brand?.trim()?.takeIf(String::isNotEmpty),
+            variant = identity.variant?.trim()?.takeIf(String::isNotEmpty),
+            nicotineMicrogramsPerCigarette = revisionDraft.nicotineMicrogramsPerCigarette,
+            tarMicrogramsPerCigarette = revisionDraft.tarMicrogramsPerCigarette,
+            carbonMonoxideMicrogramsPerCigarette = revisionDraft.carbonMonoxideMicrogramsPerCigarette,
+            priceMicrosPerCigarette = revisionDraft.priceMicrosPerCigarette,
+            currencyCode = revisionDraft.currencyCode,
+            valueSource = revisionDraft.valueSource,
+            isDefault = shouldBeDefault,
+            isArchived = false,
+            createdAtEpochMillis = now,
+            updatedAtEpochMillis = now,
+        )
+        dao.createProductWithRevision(product, revisionDraft.toEntity(productId, now))
+        return product
+    }
+
+    suspend fun updateProduct(
+        product: CigaretteProductEntity,
+        identity: ProductIdentityDraft,
+        revisionDraft: ProductRevisionDraft?,
+    ) {
+        val now = clock.millis()
+        val updatedProduct = product.copy(
+            name = identity.name.trim(),
+            brand = identity.brand?.trim()?.takeIf(String::isNotEmpty),
+            variant = identity.variant?.trim()?.takeIf(String::isNotEmpty),
+            updatedAtEpochMillis = now,
+        )
+        dao.updateProductWithRevision(
+            updatedProduct,
+            revisionDraft?.toEntity(product.id, now),
+            now,
+        )
+    }
+
+    suspend fun duplicateProduct(
+        source: CigaretteProductEntity,
+        revision: CigaretteProductRevisionEntity?,
+    ): CigaretteProductEntity {
+        val now = clock.millis()
+        return createProduct(
+            identity = ProductIdentityDraft(
+                name = "${source.name} kopyası",
+                brand = source.brand,
+                variant = source.variant,
+            ),
+            revisionDraft = ProductRevisionDraft(
+                effectiveFromEpochMillis = now,
+                nicotineMicrogramsPerCigarette =
+                    revision?.nicotineMicrogramsPerCigarette
+                        ?: source.nicotineMicrogramsPerCigarette,
+                tarMicrogramsPerCigarette =
+                    revision?.tarMicrogramsPerCigarette
+                        ?: source.tarMicrogramsPerCigarette,
+                carbonMonoxideMicrogramsPerCigarette =
+                    revision?.carbonMonoxideMicrogramsPerCigarette
+                        ?: source.carbonMonoxideMicrogramsPerCigarette,
+                packPriceMicros = revision?.packPriceMicros,
+                cigarettesPerPack = revision?.cigarettesPerPack,
+                priceMicrosPerCigarette =
+                    revision?.priceMicrosPerCigarette ?: source.priceMicrosPerCigarette,
+                currencyCode = revision?.currencyCode ?: source.currencyCode,
+                valueSource = revision?.valueSource ?: source.valueSource,
+            ),
+        )
+    }
+
+    suspend fun setProductArchived(
+        product: CigaretteProductEntity,
+        archived: Boolean,
+    ): Boolean = dao.setProductArchived(product, archived, clock.millis())
 
     suspend fun logWithDefaultProduct(): SmokingRecordEntity? {
         val product = dao.getDefaultProduct() ?: return null
@@ -97,4 +186,22 @@ class NefesIziRepository @Inject constructor(
     private fun defaultCurrencyCode(): String = runCatching {
         Currency.getInstance(Locale.getDefault()).currencyCode
     }.getOrDefault("TRY")
+
+    private fun ProductRevisionDraft.toEntity(
+        productId: String,
+        createdAt: Long,
+    ) = CigaretteProductRevisionEntity(
+        id = idGenerator.newId(),
+        productId = productId,
+        effectiveFromEpochMillis = effectiveFromEpochMillis,
+        nicotineMicrogramsPerCigarette = nicotineMicrogramsPerCigarette,
+        tarMicrogramsPerCigarette = tarMicrogramsPerCigarette,
+        carbonMonoxideMicrogramsPerCigarette = carbonMonoxideMicrogramsPerCigarette,
+        packPriceMicros = packPriceMicros,
+        cigarettesPerPack = cigarettesPerPack,
+        priceMicrosPerCigarette = priceMicrosPerCigarette,
+        currencyCode = currencyCode,
+        valueSource = valueSource,
+        createdAtEpochMillis = createdAt,
+    )
 }

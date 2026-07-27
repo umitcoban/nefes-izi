@@ -132,8 +132,65 @@ class ProductRevisionDaoTest {
         assertNull(record.priceMicrosPerCigaretteSnapshot)
     }
 
-    private fun product() = CigaretteProductEntity(
-        id = "product",
+    @Test
+    fun backdatedRevisionDoesNotReplaceNewerCurrentMirrorValues() = runBlocking {
+        val product = product()
+        dao.createProductWithRevision(
+            product,
+            revision("revision-old", 1_000L, 5_000_000L),
+        )
+        dao.updateProductWithRevision(
+            product = product.copy(updatedAtEpochMillis = 3_000L),
+            revision = revision("revision-current", 3_000L, 7_000_000L),
+            nowEpochMillis = 4_000L,
+        )
+        dao.updateProductWithRevision(
+            product = product.copy(updatedAtEpochMillis = 4_000L),
+            revision = revision("revision-backdated", 2_000L, 6_000_000L),
+            nowEpochMillis = 4_000L,
+        )
+
+        val mirrored = dao.observeAllProducts().first().single()
+
+        assertEquals(7_000_000L, mirrored.priceMicrosPerCigarette)
+        assertEquals(
+            "revision-current",
+            dao.getProductRevisionAt(product.id, 4_000L)?.id,
+        )
+    }
+
+    @Test
+    fun archivingDefaultTransfersDefaultAndLastActiveCannotBeArchived() = runBlocking {
+        val first = product(id = "first", isDefault = true)
+        val second = product(id = "second", isDefault = false)
+        dao.createProductWithRevision(
+            first,
+            revision("first-revision", 1_000L, 5_000_000L, productId = first.id),
+        )
+        dao.createProductWithRevision(
+            second,
+            revision("second-revision", 1_000L, 6_000_000L, productId = second.id),
+        )
+
+        assertEquals(true, dao.setProductArchived(first, true, 2_000L))
+        val afterFirstArchive = dao.observeAllProducts().first()
+        assertEquals(true, afterFirstArchive.first { it.id == first.id }.isArchived)
+        assertEquals(true, afterFirstArchive.first { it.id == second.id }.isDefault)
+        assertEquals(
+            false,
+            dao.setProductArchived(
+                afterFirstArchive.first { it.id == second.id },
+                true,
+                3_000L,
+            ),
+        )
+    }
+
+    private fun product(
+        id: String = "product",
+        isDefault: Boolean = true,
+    ) = CigaretteProductEntity(
+        id = id,
         name = "Test",
         brand = null,
         variant = null,
@@ -143,7 +200,7 @@ class ProductRevisionDaoTest {
         priceMicrosPerCigarette = 5_000_000,
         currencyCode = "TRY",
         valueSource = "USER_ENTERED",
-        isDefault = true,
+        isDefault = isDefault,
         isArchived = false,
         createdAtEpochMillis = 1_000,
         updatedAtEpochMillis = 1_000,
@@ -153,9 +210,10 @@ class ProductRevisionDaoTest {
         id: String,
         effectiveFrom: Long,
         priceMicros: Long,
+        productId: String = "product",
     ) = CigaretteProductRevisionEntity(
         id = id,
-        productId = "product",
+        productId = productId,
         effectiveFromEpochMillis = effectiveFrom,
         nicotineMicrogramsPerCigarette = 700,
         tarMicrogramsPerCigarette = 8_000,
