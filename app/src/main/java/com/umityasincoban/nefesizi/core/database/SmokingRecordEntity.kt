@@ -6,7 +6,12 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "smoking_records",
-    indices = [Index("smokedAtEpochMillis"), Index("productId")],
+    indices = [
+        Index("smokedAtEpochMillis"),
+        Index("productId"),
+        Index("trigger"),
+        Index("mood"),
+    ],
 )
 data class SmokingRecordEntity(
     @PrimaryKey val id: String,
@@ -15,12 +20,14 @@ data class SmokingRecordEntity(
     val quantity: Int,
     val consumedQuarter: Int,
     val productId: String?,
+    val productRevisionIdSnapshot: String?,
     val productNameSnapshot: String,
     val nicotineMicrogramsPerCigaretteSnapshot: Long?,
     val tarMicrogramsPerCigaretteSnapshot: Long?,
     val carbonMonoxideMicrogramsPerCigaretteSnapshot: Long?,
     val priceMicrosPerCigaretteSnapshot: Long?,
     val currencyCodeSnapshot: String,
+    val valueSourceSnapshot: String?,
     val cravingLevel: Int?,
     val trigger: String?,
     val mood: String?,

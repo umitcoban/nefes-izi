@@ -2,8 +2,10 @@ package com.umityasincoban.nefesizi.core.di
 
 import android.content.Context
 import androidx.room.Room
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
+import com.umityasincoban.nefesizi.core.common.IdGenerator
+import com.umityasincoban.nefesizi.core.common.AppDispatchers
+import com.umityasincoban.nefesizi.core.common.UuidIdGenerator
+import com.umityasincoban.nefesizi.core.database.DatabaseMigrations
 import com.umityasincoban.nefesizi.core.database.NefesIziDao
 import com.umityasincoban.nefesizi.core.database.NefesIziDatabase
 import dagger.Module
@@ -13,6 +15,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import java.time.Clock
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -21,7 +24,7 @@ object AppModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): NefesIziDatabase =
         Room.databaseBuilder(context, NefesIziDatabase::class.java, "nefes_izi.db")
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(*DatabaseMigrations.ALL)
             .build()
 
     @Provides
@@ -30,29 +33,14 @@ object AppModule {
     @Provides
     fun provideClock(): Clock = Clock.systemDefaultZone()
 
-    private val MIGRATION_1_2 = object : Migration(1, 2) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
-                """
-                CREATE TABLE IF NOT EXISTS `daily_health_entries` (
-                    `entryDate` TEXT NOT NULL,
-                    `zoneId` TEXT NOT NULL,
-                    `energyLevel` INTEGER,
-                    `stressLevel` INTEGER,
-                    `sleepQuality` INTEGER,
-                    `morningCough` INTEGER,
-                    `headache` INTEGER,
-                    `shortnessOfBreath` INTEGER,
-                    `chestDiscomfort` INTEGER,
-                    `restingHeartRate` INTEGER,
-                    `exerciseMinutes` INTEGER,
-                    `note` TEXT,
-                    `createdAtEpochMillis` INTEGER NOT NULL,
-                    `updatedAtEpochMillis` INTEGER NOT NULL,
-                    PRIMARY KEY(`entryDate`)
-                )
-                """.trimIndent(),
-            )
-        }
-    }
+    @Provides
+    @Singleton
+    fun provideIdGenerator(): IdGenerator = UuidIdGenerator()
+
+    @Provides
+    @Singleton
+    fun provideAppDispatchers(): AppDispatchers = AppDispatchers(
+        io = Dispatchers.IO,
+        computation = Dispatchers.Default,
+    )
 }

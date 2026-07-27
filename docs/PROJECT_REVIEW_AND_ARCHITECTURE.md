@@ -1,27 +1,30 @@
 # Nefes İzi — Proje İncelemesi ve Hedef Mimari
 
-> Durum belgesi  
-> Son inceleme: 27 Temmuz 2026  
+> Yaşayan mimari belgesi<br>
+> İlk inceleme: 27 Temmuz 2026<br>
+> Uygulama durumu güncellemesi: 28 Temmuz 2026<br>
 > Kapsam: Mevcut Android projesi, kullanıcı tarafından sağlanan 1.032 satırlık ürün gereksinimi, hedef mimari, veri güvenilirliği ve sağlık iletişimi
 
 ## 1. Yönetici özeti
 
-Proje şu anda Android Studio **Empty Activity** başlangıç şablonu durumundadır. Tek `app` modülü, bir `MainActivity`, varsayılan Material 3 tema dosyaları ve örnek testlerden oluşur. Ürün gereksinimlerindeki Room, DataStore, Hilt, Navigation Compose, WorkManager, biyometrik kilit, yedekleme, kayıt/analiz/sağlık özellikleri henüz uygulanmamıştır.
+Proje Empty Activity tabanından çalışan bir local-first ürün çekirdeğine taşınmıştır. Mevcut uygulamada Room, DataStore, Hilt, Navigation Compose, modern tema, onboarding, hızlı kayıt, kayıt arşivi, günlük sağlık formu, temel analiz ve ayarlar ekranları çalışmaktadır.
 
-Mevcut başlangıç noktası derlenebilir durumdadır:
+Son doğrulanan komutlar:
 
 - `./gradlew assembleDebug`: başarılı
 - `./gradlew testDebugUnitTest`: başarılı
 - `./gradlew lintDebug`: başarılı
 
-Bu sonuç ürünün hazır olduğunu değil, yalnızca Empty Activity tabanının sağlıklı olduğunu gösterir. Mevcut iki test Android Studio'nun ürettiği örnek testlerdir ve ürün davranışını doğrulamaz.
+Uygulama kullanılabilir bir dikey dilime sahiptir; ancak tam ürün yönetimi, yürürlük tarihli fiyat geçmişi, kayıt detay düzenleme, gelişmiş analiz, yedekleme, bildirim, biyometrik kilit ve kapsamlı test matrisi tamamlanmadan release adayı değildir.
 
 Önerilen yaklaşım:
 
-1. Önce veri sözleşmeleri, zaman kuralları, snapshot davranışı ve sağlık metinleri sabitlenmeli.
-2. Ardından yerel veri temeli ve test altyapısı kurulmalı.
-3. İlk dikey dilim onboarding → ürün oluşturma → tek dokunuşla kayıt → geri alma → bugünkü toplam akışını eksiksiz çalıştırmalı.
-4. Kayıtlar, sağlık günlüğü, analiz, yedekleme, bildirim ve biyometrik kilit bu güvenilir çekirdeğin üzerine eklenmeli.
+1. Yürürlük tarihli ürün revizyonu ve fiyat snapshot sözleşmesi uygulanmalı.
+2. Ürün yönetimi ile kayıt detay/düzenleme akışları tamamlanmalı.
+3. Maliyet, gelişmiş analiz ve sağlık karşılaştırmaları test edilebilir domain kurallarına taşınmalı.
+4. Yedekleme, bildirim, biyometrik kilit ve release kalite kapıları tamamlanmalı.
+
+Ayrıntılı ve güncel uygulama sırası için `docs/IMPLEMENTATION_ROADMAP.md` esas alınır. Bu belgenin devamındaki hedef mimari bölümleri kararların gerekçesini korur; ilk incelemeye ait envanter satırları tarihsel başlangıç durumunu gösterebilir.
 
 Bu ürün için “local-first”, yerel verinin bir önbellek olması değil, **tek ve nihai doğruluk kaynağı olması** anlamına gelir. Room kayıt ve sağlık verilerinin; DataStore ise küçük kullanıcı tercihleri ile özellik ayarlarının kaynağı olmalıdır.
 
@@ -50,22 +53,22 @@ Bu belge gereksinim metnini yeniden yazmak yerine, onu uygulanabilir teknik kara
 
 | Alan | Mevcut durum | Değerlendirme |
 |---|---|---|
-| Modüller | Yalnızca `:app` | Başlangıç için normal; hedef ürün için sınırlar kurulmalı |
-| UI | `Hello Android!` | Ürün ekranı veya navigasyon yok |
-| Compose | Material 3 ve Compose BOM mevcut | Uygun temel |
-| Tema | Şablon mor/pembe palet, dynamic color açık | Ürün tasarım dili tanımlanmamış |
-| Veri | Room/DataStore yok | Kalıcılık henüz yok |
-| DI | Hilt yok | Bağımlılıklar henüz modellenmemiş |
-| Navigasyon | Yok | Beş ana bölüm ve onboarding yok |
+| Modüller | Tek `:app`, net `core/feature/ui` paket sınırları | MVP için yeterli; ihtiyaç halinde modülerleştirilebilir |
+| UI | Onboarding ve beş ana sekme çalışıyor | Gelişmiş alt akışlar yol haritasında |
+| Compose | Material 3 ve Compose BOM | Aktif |
+| Tema | Özel açık/koyu editorial tema | Sistem/açık/koyu seçimli |
+| Veri | Room v2 ve Preferences DataStore | Ürün revizyonu için v3 sırada |
+| DI | Hilt | Aktif |
+| Navigasyon | Navigation Compose, beş alt sekme | Aktif |
 | Arka plan işi | WorkManager yok | Bildirim zamanlaması yok |
 | Güvenlik | Biyometrik akış yok | Hassas günlük verileri için eksik |
 | İnternet | `INTERNET` izni yok | Gereksinimle uyumlu; korunmalı |
-| Android backup | `allowBackup="true"` ve şablon kurallar | “Yalnızca cihazda” vaadiyle çelişebilir |
-| `minSdk` | 33 | Gereksiz ölçüde dar cihaz desteği |
+| Android backup | `allowBackup="false"` | Local-first vaadiyle uyumlu |
+| `minSdk` | 26 | Hedef cihaz kapsamıyla uyumlu |
 | `targetSdk` | 36 | Güncel tabana yakın |
-| Java hedefi | 11 | Yeni Android/Kotlin altyapısı için 17 tercih edilmeli |
-| Testler | İki şablon test | Ürün kapsamı yok |
-| Git | Çalışma dizininde `.git` bulunamadı | Değişiklik geçmişi ve güvenli geri dönüş için repo başlatılmalı |
+| Java hedefi | 17 | Uyumlu |
+| Testler | Domain unit testleri; migration/DAO/UI kapsamı sırada | Genişletilmeli |
+| Git | Git deposu mevcut | Faz bazlı anlamlı commit politikası uygulanmalı |
 
 ### 3.1 Sürüm kataloğu gözlemi
 

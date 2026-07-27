@@ -6,10 +6,11 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [
         CigaretteProductEntity::class,
+        CigaretteProductRevisionEntity::class,
         SmokingRecordEntity::class,
         DailyHealthEntryEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class NefesIziDatabase : RoomDatabase() {

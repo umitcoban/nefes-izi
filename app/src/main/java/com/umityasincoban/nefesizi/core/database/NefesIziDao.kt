@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -21,13 +22,48 @@ interface NefesIziDao {
     @Query("UPDATE cigarette_products SET isDefault = 0, updatedAtEpochMillis = :updatedAt")
     suspend fun clearDefaultProduct(updatedAt: Long)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertProduct(product: CigaretteProductEntity)
+    @Upsert
+    suspend fun upsertProduct(product: CigaretteProductEntity)
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertProductRevision(revision: CigaretteProductRevisionEntity)
+
+    @Query(
+        """
+        SELECT * FROM cigarette_product_revisions
+        WHERE productId = :productId AND effectiveFromEpochMillis <= :atEpochMillis
+        ORDER BY effectiveFromEpochMillis DESC
+        LIMIT 1
+        """,
+    )
+    suspend fun getProductRevisionAt(
+        productId: String,
+        atEpochMillis: Long,
+    ): CigaretteProductRevisionEntity?
+
+    @Query(
+        """
+        SELECT * FROM cigarette_product_revisions
+        WHERE productId = :productId
+        ORDER BY effectiveFromEpochMillis DESC
+        """,
+    )
+    fun observeProductRevisions(productId: String): Flow<List<CigaretteProductRevisionEntity>>
+
+    @Transaction
+    suspend fun createProductWithRevision(
+        product: CigaretteProductEntity,
+        revision: CigaretteProductRevisionEntity,
+    ) {
+        if (product.isDefault) clearDefaultProduct(product.updatedAtEpochMillis)
+        upsertProduct(product)
+        insertProductRevision(revision)
+    }
 
     @Transaction
     suspend fun replaceDefaultProduct(product: CigaretteProductEntity) {
         clearDefaultProduct(product.updatedAtEpochMillis)
-        insertProduct(product.copy(isDefault = true))
+        upsertProduct(product.copy(isDefault = true))
     }
 
     @Insert(onConflict = OnConflictStrategy.ABORT)

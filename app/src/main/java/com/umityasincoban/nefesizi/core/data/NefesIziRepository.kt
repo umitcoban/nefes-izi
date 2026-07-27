@@ -1,15 +1,16 @@
 package com.umityasincoban.nefesizi.core.data
 
+import com.umityasincoban.nefesizi.core.common.IdGenerator
 import com.umityasincoban.nefesizi.core.database.CigaretteProductEntity
+import com.umityasincoban.nefesizi.core.database.CigaretteProductRevisionEntity
 import com.umityasincoban.nefesizi.core.database.DailyHealthEntryEntity
 import com.umityasincoban.nefesizi.core.database.NefesIziDao
 import com.umityasincoban.nefesizi.core.database.SmokingRecordEntity
+import com.umityasincoban.nefesizi.core.domain.CreateSmokingRecordUseCase
 import java.time.Clock
 import java.time.Instant
-import java.time.ZoneId
 import java.util.Currency
 import java.util.Locale
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +19,8 @@ import kotlinx.coroutines.flow.Flow
 class NefesIziRepository @Inject constructor(
     private val dao: NefesIziDao,
     private val clock: Clock,
+    private val idGenerator: IdGenerator,
+    private val createSmokingRecord: CreateSmokingRecordUseCase,
 ) {
     fun observeDefaultProduct(): Flow<CigaretteProductEntity?> = dao.observeDefaultProduct()
 
@@ -35,24 +38,39 @@ class NefesIziRepository @Inject constructor(
         carbonMonoxideMicrograms: Long?,
     ) {
         val now = clock.millis()
-        dao.replaceDefaultProduct(
-            CigaretteProductEntity(
-                id = UUID.randomUUID().toString(),
-                name = name.trim(),
-                brand = null,
-                variant = null,
-                nicotineMicrogramsPerCigarette = nicotineMicrograms,
-                tarMicrogramsPerCigarette = tarMicrograms,
-                carbonMonoxideMicrogramsPerCigarette = carbonMonoxideMicrograms,
-                priceMicrosPerCigarette = null,
-                currencyCode = defaultCurrencyCode(),
-                valueSource = "USER_ENTERED",
-                isDefault = true,
-                isArchived = false,
-                createdAtEpochMillis = now,
-                updatedAtEpochMillis = now,
-            ),
+        val productId = idGenerator.newId()
+        val currencyCode = defaultCurrencyCode()
+        val product = CigaretteProductEntity(
+            id = productId,
+            name = name.trim(),
+            brand = null,
+            variant = null,
+            nicotineMicrogramsPerCigarette = nicotineMicrograms,
+            tarMicrogramsPerCigarette = tarMicrograms,
+            carbonMonoxideMicrogramsPerCigarette = carbonMonoxideMicrograms,
+            priceMicrosPerCigarette = null,
+            currencyCode = currencyCode,
+            valueSource = "USER_ENTERED",
+            isDefault = true,
+            isArchived = false,
+            createdAtEpochMillis = now,
+            updatedAtEpochMillis = now,
         )
+        val revision = CigaretteProductRevisionEntity(
+            id = idGenerator.newId(),
+            productId = productId,
+            effectiveFromEpochMillis = now,
+            nicotineMicrogramsPerCigarette = nicotineMicrograms,
+            tarMicrogramsPerCigarette = tarMicrograms,
+            carbonMonoxideMicrogramsPerCigarette = carbonMonoxideMicrograms,
+            packPriceMicros = null,
+            cigarettesPerPack = null,
+            priceMicrosPerCigarette = null,
+            currencyCode = currencyCode,
+            valueSource = "USER_ENTERED",
+            createdAtEpochMillis = now,
+        )
+        dao.createProductWithRevision(product, revision)
     }
 
     suspend fun setDefaultProduct(product: CigaretteProductEntity) {
@@ -61,30 +79,7 @@ class NefesIziRepository @Inject constructor(
 
     suspend fun logWithDefaultProduct(): SmokingRecordEntity? {
         val product = dao.getDefaultProduct() ?: return null
-        val now = clock.millis()
-        val record = SmokingRecordEntity(
-            id = UUID.randomUUID().toString(),
-            smokedAtEpochMillis = now,
-            zoneIdSnapshot = ZoneId.systemDefault().id,
-            quantity = 1,
-            consumedQuarter = 4,
-            productId = product.id,
-            productNameSnapshot = product.name,
-            nicotineMicrogramsPerCigaretteSnapshot = product.nicotineMicrogramsPerCigarette,
-            tarMicrogramsPerCigaretteSnapshot = product.tarMicrogramsPerCigarette,
-            carbonMonoxideMicrogramsPerCigaretteSnapshot = product.carbonMonoxideMicrogramsPerCigarette,
-            priceMicrosPerCigaretteSnapshot = product.priceMicrosPerCigarette,
-            currencyCodeSnapshot = product.currencyCode,
-            cravingLevel = null,
-            trigger = null,
-            mood = null,
-            locationType = null,
-            note = null,
-            createdAtEpochMillis = now,
-            updatedAtEpochMillis = now,
-        )
-        dao.insertRecord(record)
-        return record
+        return createSmokingRecord(product)
     }
 
     suspend fun undoRecord(id: String) = dao.deleteRecord(id)
