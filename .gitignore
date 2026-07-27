@@ -1,0 +1,256 @@
+# ==============================================================================
+# Nefes İzi — Android / Kotlin repository ignore rules
+# ==============================================================================
+#
+# Keep in Git:
+# - gradle/wrapper/gradle-wrapper.jar and gradle-wrapper.properties
+# - gradle/libs.versions.toml
+# - Room schema exports (for migration tests)
+# - ProGuard/R8 rules and baseline profiles
+# - Shared IDE code styles, inspections, and run configurations
+#
+# Never commit signing keys, local SDK paths, credentials, generated packages,
+# build outputs, or machine-specific IDE state.
+
+# ------------------------------------------------------------------------------
+# Operating system files
+# ------------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ------------------------------------------------------------------------------
+# Android Studio / IntelliJ IDEA
+# ------------------------------------------------------------------------------
+*.iml
+*.ipr
+*.iws
+out/
+
+# Ignore machine-specific IDE state by default.
+.idea/*
+
+# Keep team-shareable IDE configuration.
+!.idea/codeStyles/
+!.idea/codeStyles/**
+!.idea/inspectionProfiles/
+!.idea/inspectionProfiles/**
+!.idea/runConfigurations/
+!.idea/runConfigurations/**
+!.idea/vcs.xml
+
+# Android Studio generated navigation/design state.
+.idea/caches/
+.idea/libraries/
+.idea/modules/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries/
+.idea/shelf/
+.idea/httpRequests/
+.idea/copilot/
+.idea/sonarlint/
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.idea/deploymentTargetSelector.xml
+.idea/deviceManager.xml
+.idea/deviceStreaming.xml
+.idea/appInsightsSettings.xml
+
+# JetBrains Fleet / VS Code local state.
+.fleet/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+
+# ------------------------------------------------------------------------------
+# Gradle / Kotlin build state
+# ------------------------------------------------------------------------------
+.gradle/
+.kotlin/
+**/build/
+**/.gradle/
+**/.kotlin/
+**/out/
+
+# Gradle configuration-cache diagnostics.
+configuration-cache-report.html
+
+# Kotlin compiler / KSP / KAPT incremental caches outside build directories.
+.ksp/
+.kapt/
+kotlin-js-store/
+
+# ------------------------------------------------------------------------------
+# Android generated outputs
+# ------------------------------------------------------------------------------
+captures/
+**/captures/
+.externalNativeBuild/
+**/.externalNativeBuild/
+.cxx/
+**/.cxx/
+
+# Generated Android packages and release artifacts.
+*.apk
+*.aab
+*.apks
+*.aar
+*.dex
+*.class
+
+# R8 / ProGuard and bundletool generated output.
+mapping.txt
+seeds.txt
+usage.txt
+resources.txt
+output-metadata.json
+*.idsig
+
+# Native debug-symbol bundles generated for distribution.
+*.dSYM/
+
+# ------------------------------------------------------------------------------
+# Local Android SDK / NDK configuration
+# ------------------------------------------------------------------------------
+local.properties
+sdk.dir
+ndk.dir
+
+# ------------------------------------------------------------------------------
+# Signing keys and release credentials
+# ------------------------------------------------------------------------------
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pkcs12
+*.pem
+*.key
+
+keystore.properties
+signing.properties
+key.properties
+release.properties
+play-account.json
+play-service-account*.json
+service-account*.json
+
+# Google Play Publisher / Gradle Play Publisher credentials.
+**/play-account.json
+**/play-service-account*.json
+**/service-account*.json
+
+# ------------------------------------------------------------------------------
+# Secrets and environment-specific configuration
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.template
+
+secrets.properties
+gradle-local.properties
+local.gradle.properties
+
+# Common service configuration files. Nefes İzi is offline-first and should not
+# use these; ignoring them also prevents accidental credential/config commits.
+google-services.json
+GoogleService-Info.plist
+firebase-debug.log
+
+# Generic credential exports and local overrides.
+credentials.json
+credentials*.json
+!credentials.example.json
+!credentials.template.json
+*.credentials
+*.secret
+*.secrets
+*.token
+
+# ------------------------------------------------------------------------------
+# Logs, profiling, test, and diagnostic output
+# ------------------------------------------------------------------------------
+*.log
+*.hprof
+*.heapdump
+*.trace
+*.profraw
+*.profdata
+hs_err_pid*
+replay_pid*
+
+test-results/
+test-output/
+screenshots/failures/
+
+# Android emulator/device local files.
+*.avd/
+
+# ------------------------------------------------------------------------------
+# Fastlane generated reports (store metadata itself remains trackable)
+# ------------------------------------------------------------------------------
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# ------------------------------------------------------------------------------
+# Code coverage and quality-tool caches
+# ------------------------------------------------------------------------------
+.coverage
+.coverage.*
+coverage/
+*.exec
+*.ec
+*.lcov
+jacoco-report/
+
+.sonar/
+.scannerwork/
+.detekt/
+.ktlint/
+
+# ------------------------------------------------------------------------------
+# Temporary files and editor backups
+# ------------------------------------------------------------------------------
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*.orig
+*~
+
+.tmp/
+tmp/
+temp/
+
+# ------------------------------------------------------------------------------
+# Local AI/editor assistant state
+# ------------------------------------------------------------------------------
+.cursor/
+.windsurf/
+
+# ------------------------------------------------------------------------------
+# Explicit safety exceptions
+# ------------------------------------------------------------------------------
+# These generated-looking files are intentionally versioned when introduced.
+!gradle/wrapper/gradle-wrapper.jar
+!**/libs/*.aar
+!**/schemas/**
+!**/baseline-prof.txt
+!**/baselineProfiles/**
+!**/proguard-rules.pro
+!**/consumer-rules.pro
+!**/lint-baseline.xml
