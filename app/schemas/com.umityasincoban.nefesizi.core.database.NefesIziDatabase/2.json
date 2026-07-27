@@ -1,0 +1,345 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "bdc1c9f2c9917997eac7828f44f262ef",
+    "entities": [
+      {
+        "tableName": "cigarette_products",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `brand` TEXT, `variant` TEXT, `nicotineMicrogramsPerCigarette` INTEGER, `tarMicrogramsPerCigarette` INTEGER, `carbonMonoxideMicrogramsPerCigarette` INTEGER, `priceMicrosPerCigarette` INTEGER, `currencyCode` TEXT NOT NULL, `valueSource` TEXT NOT NULL, `isDefault` INTEGER NOT NULL, `isArchived` INTEGER NOT NULL, `createdAtEpochMillis` INTEGER NOT NULL, `updatedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "brand",
+            "columnName": "brand",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "variant",
+            "columnName": "variant",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nicotineMicrogramsPerCigarette",
+            "columnName": "nicotineMicrogramsPerCigarette",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "tarMicrogramsPerCigarette",
+            "columnName": "tarMicrogramsPerCigarette",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "carbonMonoxideMicrogramsPerCigarette",
+            "columnName": "carbonMonoxideMicrogramsPerCigarette",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "priceMicrosPerCigarette",
+            "columnName": "priceMicrosPerCigarette",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "currencyCode",
+            "columnName": "currencyCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "valueSource",
+            "columnName": "valueSource",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDefault",
+            "columnName": "isDefault",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isArchived",
+            "columnName": "isArchived",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "createdAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updatedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cigarette_products_isDefault",
+            "unique": false,
+            "columnNames": [
+              "isDefault"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cigarette_products_isDefault` ON `${TABLE_NAME}` (`isDefault`)"
+          },
+          {
+            "name": "index_cigarette_products_isArchived",
+            "unique": false,
+            "columnNames": [
+              "isArchived"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cigarette_products_isArchived` ON `${TABLE_NAME}` (`isArchived`)"
+          }
+        ]
+      },
+      {
+        "tableName": "smoking_records",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `smokedAtEpochMillis` INTEGER NOT NULL, `zoneIdSnapshot` TEXT NOT NULL, `quantity` INTEGER NOT NULL, `consumedQuarter` INTEGER NOT NULL, `productId` TEXT, `productNameSnapshot` TEXT NOT NULL, `nicotineMicrogramsPerCigaretteSnapshot` INTEGER, `tarMicrogramsPerCigaretteSnapshot` INTEGER, `carbonMonoxideMicrogramsPerCigaretteSnapshot` INTEGER, `priceMicrosPerCigaretteSnapshot` INTEGER, `currencyCodeSnapshot` TEXT NOT NULL, `cravingLevel` INTEGER, `trigger` TEXT, `mood` TEXT, `locationType` TEXT, `note` TEXT, `createdAtEpochMillis` INTEGER NOT NULL, `updatedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "smokedAtEpochMillis",
+            "columnName": "smokedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "zoneIdSnapshot",
+            "columnName": "zoneIdSnapshot",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantity",
+            "columnName": "quantity",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consumedQuarter",
+            "columnName": "consumedQuarter",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productId",
+            "columnName": "productId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "productNameSnapshot",
+            "columnName": "productNameSnapshot",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nicotineMicrogramsPerCigaretteSnapshot",
+            "columnName": "nicotineMicrogramsPerCigaretteSnapshot",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "tarMicrogramsPerCigaretteSnapshot",
+            "columnName": "tarMicrogramsPerCigaretteSnapshot",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "carbonMonoxideMicrogramsPerCigaretteSnapshot",
+            "columnName": "carbonMonoxideMicrogramsPerCigaretteSnapshot",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "priceMicrosPerCigaretteSnapshot",
+            "columnName": "priceMicrosPerCigaretteSnapshot",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "currencyCodeSnapshot",
+            "columnName": "currencyCodeSnapshot",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cravingLevel",
+            "columnName": "cravingLevel",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "trigger",
+            "columnName": "trigger",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "mood",
+            "columnName": "mood",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "locationType",
+            "columnName": "locationType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "createdAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updatedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_smoking_records_smokedAtEpochMillis",
+            "unique": false,
+            "columnNames": [
+              "smokedAtEpochMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_smoking_records_smokedAtEpochMillis` ON `${TABLE_NAME}` (`smokedAtEpochMillis`)"
+          },
+          {
+            "name": "index_smoking_records_productId",
+            "unique": false,
+            "columnNames": [
+              "productId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_smoking_records_productId` ON `${TABLE_NAME}` (`productId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "daily_health_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entryDate` TEXT NOT NULL, `zoneId` TEXT NOT NULL, `energyLevel` INTEGER, `stressLevel` INTEGER, `sleepQuality` INTEGER, `morningCough` INTEGER, `headache` INTEGER, `shortnessOfBreath` INTEGER, `chestDiscomfort` INTEGER, `restingHeartRate` INTEGER, `exerciseMinutes` INTEGER, `note` TEXT, `createdAtEpochMillis` INTEGER NOT NULL, `updatedAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`entryDate`))",
+        "fields": [
+          {
+            "fieldPath": "entryDate",
+            "columnName": "entryDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "zoneId",
+            "columnName": "zoneId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "energyLevel",
+            "columnName": "energyLevel",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "stressLevel",
+            "columnName": "stressLevel",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sleepQuality",
+            "columnName": "sleepQuality",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "morningCough",
+            "columnName": "morningCough",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "headache",
+            "columnName": "headache",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "shortnessOfBreath",
+            "columnName": "shortnessOfBreath",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "chestDiscomfort",
+            "columnName": "chestDiscomfort",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "restingHeartRate",
+            "columnName": "restingHeartRate",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "exerciseMinutes",
+            "columnName": "exerciseMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAtEpochMillis",
+            "columnName": "createdAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtEpochMillis",
+            "columnName": "updatedAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "entryDate"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'bdc1c9f2c9917997eac7828f44f262ef')"
+    ]
+  }
+}

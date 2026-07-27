@@ -32,7 +32,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.umityasincoban.nefesizi.feature.analytics.AnalyticsScreen
+import com.umityasincoban.nefesizi.feature.health.HealthScreen
 import com.umityasincoban.nefesizi.feature.onboarding.OnboardingScreen
+import com.umityasincoban.nefesizi.feature.records.RecordsScreen
+import com.umityasincoban.nefesizi.feature.settings.SettingsScreen
 import com.umityasincoban.nefesizi.feature.today.TodayScreen
 
 @Composable
@@ -99,26 +103,10 @@ private fun MainNavigation() {
             modifier = Modifier.padding(padding),
         ) {
             composable("today") { TodayScreen(snackbarHostState) }
-            composable("records") { ComingSoon("Kayıtların", "Gün gün, ayrıntılarıyla burada akacak.") }
-            composable("health") { ComingSoon("Sağlık günlüğün", "Kendini nasıl hissettiğini sakin bir ritimle kaydet.") }
-            composable("analytics") { ComingSoon("Örüntülerin", "Zaman, tetikleyici ve maliyet ilişkileri burada görünür olacak.") }
-            composable("settings") { ComingSoon("Sana göre", "Tema, gizlilik, ürünler ve yerel yedekleme ayarları.") }
-        }
-    }
-}
-
-@Composable
-private fun ComingSoon(title: String, supporting: String) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        androidx.compose.foundation.layout.Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(title, style = MaterialTheme.typography.headlineLarge)
-            Text(
-                supporting,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+            composable("records") { RecordsScreen(snackbarHostState) }
+            composable("health") { HealthScreen(snackbarHostState) }
+            composable("analytics") { AnalyticsScreen() }
+            composable("settings") { SettingsScreen() }
         }
     }
 }

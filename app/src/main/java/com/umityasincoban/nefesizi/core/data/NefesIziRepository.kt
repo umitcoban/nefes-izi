@@ -1,6 +1,7 @@
 package com.umityasincoban.nefesizi.core.data
 
 import com.umityasincoban.nefesizi.core.database.CigaretteProductEntity
+import com.umityasincoban.nefesizi.core.database.DailyHealthEntryEntity
 import com.umityasincoban.nefesizi.core.database.NefesIziDao
 import com.umityasincoban.nefesizi.core.database.SmokingRecordEntity
 import java.time.Clock
@@ -21,6 +22,8 @@ class NefesIziRepository @Inject constructor(
     fun observeDefaultProduct(): Flow<CigaretteProductEntity?> = dao.observeDefaultProduct()
 
     fun observeProducts(): Flow<List<CigaretteProductEntity>> = dao.observeProducts()
+
+    fun observeAllRecords(): Flow<List<SmokingRecordEntity>> = dao.observeAllRecords()
 
     fun observeRecords(startInclusive: Instant, endExclusive: Instant): Flow<List<SmokingRecordEntity>> =
         dao.observeRecords(startInclusive.toEpochMilli(), endExclusive.toEpochMilli())
@@ -52,6 +55,10 @@ class NefesIziRepository @Inject constructor(
         )
     }
 
+    suspend fun setDefaultProduct(product: CigaretteProductEntity) {
+        dao.replaceDefaultProduct(product.copy(updatedAtEpochMillis = clock.millis()))
+    }
+
     suspend fun logWithDefaultProduct(): SmokingRecordEntity? {
         val product = dao.getDefaultProduct() ?: return null
         val now = clock.millis()
@@ -81,6 +88,16 @@ class NefesIziRepository @Inject constructor(
     }
 
     suspend fun undoRecord(id: String) = dao.deleteRecord(id)
+
+    suspend fun restoreRecord(record: SmokingRecordEntity) = dao.restoreRecord(record)
+
+    fun observeHealthEntry(date: String): Flow<DailyHealthEntryEntity?> =
+        dao.observeHealthEntry(date)
+
+    fun observeHealthEntries(startDate: String, endDate: String): Flow<List<DailyHealthEntryEntity>> =
+        dao.observeHealthEntries(startDate, endDate)
+
+    suspend fun saveHealthEntry(entry: DailyHealthEntryEntity) = dao.upsertHealthEntry(entry)
 
     private fun defaultCurrencyCode(): String = runCatching {
         Currency.getInstance(Locale.getDefault()).currencyCode

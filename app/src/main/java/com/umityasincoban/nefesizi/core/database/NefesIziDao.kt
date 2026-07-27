@@ -47,4 +47,25 @@ interface NefesIziDao {
         startInclusive: Long,
         endExclusive: Long,
     ): Flow<List<SmokingRecordEntity>>
+
+    @Query("SELECT * FROM smoking_records ORDER BY smokedAtEpochMillis DESC")
+    fun observeAllRecords(): Flow<List<SmokingRecordEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restoreRecord(record: SmokingRecordEntity)
+
+    @Query("SELECT * FROM daily_health_entries WHERE entryDate = :date LIMIT 1")
+    fun observeHealthEntry(date: String): Flow<DailyHealthEntryEntity?>
+
+    @Query(
+        """
+        SELECT * FROM daily_health_entries
+        WHERE entryDate >= :startDate AND entryDate <= :endDate
+        ORDER BY entryDate DESC
+        """,
+    )
+    fun observeHealthEntries(startDate: String, endDate: String): Flow<List<DailyHealthEntryEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertHealthEntry(entry: DailyHealthEntryEntity)
 }
