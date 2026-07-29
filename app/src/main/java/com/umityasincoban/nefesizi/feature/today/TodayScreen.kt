@@ -4,11 +4,15 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -141,7 +145,10 @@ fun TodayScreen(
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 CompactMetric(
                     label = "BUGÜN",
                     value = state.totalCount.toString(),
@@ -157,7 +164,10 @@ fun TodayScreen(
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+            ) {
                 CompactMetric(
                     label = "İLK KAYIT",
                     value = state.summary.firstRecordAtEpochMillis.formatTime(),
@@ -367,6 +377,7 @@ private fun QuickLogCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun QuickLogSuccess(
     onAddDetails: () -> Unit,
@@ -377,20 +388,23 @@ private fun QuickLogSuccess(
         shape = RoundedCornerShape(22.dp),
         color = MaterialTheme.colorScheme.primaryContainer,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Kayıt hazır", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "İstersen bağlam ve not ekleyebilirsin.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
+            Text("Kayıt hazır", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "İstersen bağlam ve not ekleyebilirsin.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onUndo) { Text("Geri al") }
+                TextButton(onClick = onAddDetails) { Text("Detay ekle") }
+                TextButton(onClick = onDismiss) { Text("Kapat") }
             }
-            TextButton(onClick = onUndo) { Text("Geri al") }
-            TextButton(onClick = onAddDetails) { Text("Detay ekle") }
-            TextButton(onClick = onDismiss) { Text("Kapat") }
         }
     }
 }
@@ -398,26 +412,36 @@ private fun QuickLogSuccess(
 @Composable
 private fun CompactMetric(label: String, value: String, unit: String, modifier: Modifier) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.fillMaxHeight().heightIn(min = 112.dp),
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(22.dp),
         tonalElevation = 1.dp,
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             Text(
                 label,
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(value, style = MaterialTheme.typography.headlineMedium)
-                if (unit.isNotBlank()) {
-                    Text(
-                        "  $unit",
-                        modifier = Modifier.padding(bottom = 3.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            Text(
+                value,
+                style = MaterialTheme.typography.headlineMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (unit.isNotBlank()) {
+                Text(
+                    unit,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
@@ -448,11 +472,15 @@ private fun ExposureCard(
                 exposure.micrograms.formatMg(),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 if (exposure.unknownCount > 0) "${exposure.unknownCount} bilinmeyen" else "${exposure.knownCount} kayıtlı",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -465,22 +493,37 @@ private fun SectionTitle(
     actionLabel: String? = null,
     onAction: () -> Unit = {},
 ) {
-    Row(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom,
     ) {
-        Text(title, style = MaterialTheme.typography.titleLarge)
-        if (actionLabel == null) {
-            Text(
-                supporting,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        if (maxWidth < 380.dp && actionLabel == null) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, style = MaterialTheme.typography.titleLarge)
+                Text(
+                    supporting,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         } else {
-            TextButton(onClick = onAction) { Text(actionLabel) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Text(title, style = MaterialTheme.typography.titleLarge)
+                if (actionLabel == null) {
+                    Text(
+                        supporting,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    TextButton(onClick = onAction) { Text(actionLabel) }
+                }
+            }
         }
     }
 }

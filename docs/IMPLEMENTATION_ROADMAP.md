@@ -33,12 +33,14 @@ Son güncelleme: 29 Temmuz 2026
 - Faz 9 — bildirim ve biyometrik erişim kapısı: tamamlandı. Varsayılan kapalı
   hatırlatmalar, kullanıcı eyleminde izin isteme, unique WorkManager işleri ve
   destek kontrolü yapılan biyometrik kilit uygulandı.
-- Sıradaki geliştirme paketi: Faz 10 — test, erişilebilirlik ve release
-  sertleştirme. Release işlemleri ayrı ve ayrıntılı bir kontrolde ele alınacak.
+- Faz 10 — kişisel release sertleştirmesi: tamamlandı. Dar ekran kartları
+  uyarlanabilir hale getirildi; R8/minify ve resource shrinking açık, imzalı
+  kişisel release APK üretildi ve emülatörde smoke test edildi. Mağaza yayınına
+  özel kalıcı imza, AAB, mağaza metni ve geniş cihaz matrisi şimdilik ertelendi.
 
-29 Temmuz doğrulaması: `assembleDebug`, `testDebugUnitTest` ve `lintDebug`
-başarılıdır. Faz 6–9 sonrası saf Kotlin test matrisi 70 unit teste
-genişletilmiş; sıfır hata ve sıfır atlanan test elde edilmiştir.
+29 Temmuz doğrulaması: `assembleDebug`, `assembleRelease`, `lintRelease`,
+`testDebugUnitTest` ve `connectedDebugAndroidTest` başarılıdır. 70 unit test ve
+9 emülatör instrumented testi sıfır hata ve sıfır atlanan testle tamamlanmıştır.
 
 ## 1. Amaç ve mevcut durum
 
@@ -639,6 +641,10 @@ Biyometrik:
 - uygulama verisini şifrelediği izlenimini verme; bu özellik uygulama erişim kapısıdır.
 
 ### Faz 10 — Test, erişilebilirlik ve release sertleştirme
+
+Durum: kişisel kullanım profili tamamlandı. Aşağıdaki mağaza yayını ve geniş
+erişilebilirlik matrisi maddeleri gelecekte genel dağıtım kararı verilirse
+yeniden ele alınacaktır.
 
 Unit test:
 

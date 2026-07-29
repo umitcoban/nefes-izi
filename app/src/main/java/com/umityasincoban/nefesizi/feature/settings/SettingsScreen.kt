@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.umityasincoban.nefesizi.core.data.ThemeMode
 import com.umityasincoban.nefesizi.core.database.CigaretteProductEntity
+import com.umityasincoban.nefesizi.BuildConfig
 
 @Composable
 fun SettingsScreen(
@@ -358,7 +359,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text("Nefes İzi", style = MaterialTheme.typography.headlineMedium)
-                    Text("Sürüm 1.0 · local-first kişisel günlük")
+                    Text("Sürüm ${BuildConfig.VERSION_NAME} · local-first kişisel günlük")
                     Text(
                         "Tıbbi teşhis veya tedavi amacı taşımaz.",
                         modifier = Modifier.padding(top = 8.dp),
