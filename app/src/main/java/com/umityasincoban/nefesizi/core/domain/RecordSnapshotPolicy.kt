@@ -29,24 +29,37 @@ fun resolveRecordSnapshot(
             productId = product.id,
             revisionId = preserved.productRevisionIdSnapshot,
             productName = preserved.productNameSnapshot,
-            nicotineMicrograms = preserved.nicotineMicrogramsPerCigaretteSnapshot,
-            tarMicrograms = preserved.tarMicrogramsPerCigaretteSnapshot,
-            carbonMonoxideMicrograms = preserved.carbonMonoxideMicrogramsPerCigaretteSnapshot,
+            nicotineMicrograms = preserved.nicotineMicrogramsPerCigaretteSnapshot
+                ?: product.nicotineMicrogramsPerCigarette.takeIf {
+                    preserved.productRevisionIdSnapshot == null
+                },
+            tarMicrograms = preserved.tarMicrogramsPerCigaretteSnapshot
+                ?: product.tarMicrogramsPerCigarette.takeIf {
+                    preserved.productRevisionIdSnapshot == null
+                },
+            carbonMonoxideMicrograms = preserved.carbonMonoxideMicrogramsPerCigaretteSnapshot
+                ?: product.carbonMonoxideMicrogramsPerCigarette.takeIf {
+                    preserved.productRevisionIdSnapshot == null
+                },
             priceMicros = preserved.priceMicrosPerCigaretteSnapshot,
             currencyCode = preserved.currencyCodeSnapshot,
-            valueSource = preserved.valueSourceSnapshot,
+            valueSource = preserved.valueSourceSnapshot
+                ?: product.valueSource.takeIf { preserved.productRevisionIdSnapshot == null },
         )
     } else {
         RecordProductSnapshot(
             productId = product.id,
             revisionId = revision?.id,
             productName = product.name,
-            nicotineMicrograms = revision?.nicotineMicrogramsPerCigarette,
-            tarMicrograms = revision?.tarMicrogramsPerCigarette,
-            carbonMonoxideMicrograms = revision?.carbonMonoxideMicrogramsPerCigarette,
+            nicotineMicrograms = revision?.nicotineMicrogramsPerCigarette
+                ?: product.nicotineMicrogramsPerCigarette,
+            tarMicrograms = revision?.tarMicrogramsPerCigarette
+                ?: product.tarMicrogramsPerCigarette,
+            carbonMonoxideMicrograms = revision?.carbonMonoxideMicrogramsPerCigarette
+                ?: product.carbonMonoxideMicrogramsPerCigarette,
             priceMicros = revision?.priceMicrosPerCigarette,
             currencyCode = revision?.currencyCode ?: product.currencyCode,
-            valueSource = revision?.valueSource,
+            valueSource = revision?.valueSource ?: product.valueSource,
         )
     }
 }

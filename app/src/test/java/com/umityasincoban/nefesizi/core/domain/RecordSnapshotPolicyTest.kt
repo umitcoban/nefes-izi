@@ -51,15 +51,16 @@ class RecordSnapshotPolicyTest {
     }
 
     @Test
-    fun `date before first revision produces explicit unknown values`() {
+    fun `date before first revision uses known product chemicals but not an inferred price`() {
         val result = resolveRecordSnapshot(null, product(), null)
 
         assertNull(result.revisionId)
         assertNull(result.priceMicros)
-        assertNull(result.nicotineMicrograms)
-        assertNull(result.tarMicrograms)
-        assertNull(result.carbonMonoxideMicrograms)
+        assertEquals(800L, result.nicotineMicrograms)
+        assertEquals(9_000L, result.tarMicrograms)
+        assertEquals(10_000L, result.carbonMonoxideMicrograms)
         assertEquals("TRY", result.currencyCode)
+        assertEquals("USER_ENTERED", result.valueSource)
     }
 
     @Test
@@ -67,15 +68,36 @@ class RecordSnapshotPolicyTest {
         val existing = record().copy(
             productRevisionIdSnapshot = null,
             priceMicrosPerCigaretteSnapshot = null,
-            nicotineMicrogramsPerCigaretteSnapshot = null,
-            valueSourceSnapshot = null,
+            nicotineMicrogramsPerCigaretteSnapshot = 650L,
+            valueSourceSnapshot = "USER_ENTERED",
         )
 
         val result = resolveRecordSnapshot(existing, product().copy(name = "Değişen ad"), null)
 
         assertEquals("Eski ad", result.productName)
+        assertEquals(650L, result.nicotineMicrograms)
         assertNull(result.priceMicros)
         assertNull(result.revisionId)
+    }
+
+    @Test
+    fun `legacy record without revision is enriched with product chemicals on edit`() {
+        val legacy = record().copy(
+            productRevisionIdSnapshot = null,
+            nicotineMicrogramsPerCigaretteSnapshot = null,
+            tarMicrogramsPerCigaretteSnapshot = null,
+            carbonMonoxideMicrogramsPerCigaretteSnapshot = null,
+            priceMicrosPerCigaretteSnapshot = null,
+            valueSourceSnapshot = null,
+        )
+
+        val result = resolveRecordSnapshot(legacy, product(), null)
+
+        assertEquals(800L, result.nicotineMicrograms)
+        assertEquals(9_000L, result.tarMicrograms)
+        assertEquals(10_000L, result.carbonMonoxideMicrograms)
+        assertNull(result.priceMicros)
+        assertEquals("USER_ENTERED", result.valueSource)
     }
 
     private fun product() = CigaretteProductEntity(
