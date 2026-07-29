@@ -26,6 +26,14 @@ class AppPreferences @Inject constructor(
             ?: ThemeMode.SYSTEM
     }
 
+    val todayDisplayPreferences: Flow<TodayDisplayPreferences> = context.dataStore.data
+        .map { preferences ->
+            TodayDisplayPreferences(
+                showCost = preferences[SHOW_TODAY_COST] ?: true,
+                showExposure = preferences[SHOW_TODAY_EXPOSURE] ?: true,
+            )
+        }
+
     suspend fun completeOnboarding() {
         context.dataStore.edit { it[ONBOARDING_COMPLETED] = true }
     }
@@ -34,11 +42,26 @@ class AppPreferences @Inject constructor(
         context.dataStore.edit { it[THEME_MODE] = mode.name }
     }
 
+    suspend fun setShowTodayCost(show: Boolean) {
+        context.dataStore.edit { it[SHOW_TODAY_COST] = show }
+    }
+
+    suspend fun setShowTodayExposure(show: Boolean) {
+        context.dataStore.edit { it[SHOW_TODAY_EXPOSURE] = show }
+    }
+
     private companion object {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val SHOW_TODAY_COST = booleanPreferencesKey("show_today_cost")
+        val SHOW_TODAY_EXPOSURE = booleanPreferencesKey("show_today_exposure")
     }
 }
+
+data class TodayDisplayPreferences(
+    val showCost: Boolean = true,
+    val showExposure: Boolean = true,
+)
 
 enum class ThemeMode {
     SYSTEM,

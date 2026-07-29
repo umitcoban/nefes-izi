@@ -174,6 +174,11 @@ class NefesIziRepository @Inject constructor(
         return createSmokingRecord(product)
     }
 
+    suspend fun logWithProduct(productId: String): SmokingRecordEntity? {
+        val product = dao.getProduct(productId)?.takeUnless { it.isArchived } ?: return null
+        return createSmokingRecord(product)
+    }
+
     suspend fun createRecord(draft: SmokingRecordDraft): SmokingRecordEntity? {
         val product = dao.getProduct(draft.productId) ?: return null
         return createSmokingRecord.create(product, draft)

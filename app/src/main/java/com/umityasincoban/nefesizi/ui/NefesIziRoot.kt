@@ -106,8 +106,20 @@ private fun MainNavigation() {
             startDestination = "today",
             modifier = Modifier.padding(padding),
         ) {
-            composable("today") { TodayScreen(snackbarHostState) }
+            composable("today") {
+                TodayScreen(
+                    snackbarHostState = snackbarHostState,
+                    onAllRecords = { navController.navigate("records") },
+                    onAddDetails = { id -> navController.navigate("records/edit/$id") },
+                )
+            }
             composable("records") { RecordsScreen(snackbarHostState) }
+            composable("records/edit/{recordId}") { entry ->
+                RecordsScreen(
+                    snackbarHostState = snackbarHostState,
+                    initialEditRecordId = entry.arguments?.getString("recordId"),
+                )
+            }
             composable("health") { HealthScreen(snackbarHostState) }
             composable("analytics") { AnalyticsScreen() }
             composable("settings") {

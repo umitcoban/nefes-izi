@@ -1,11 +1,14 @@
 package com.umityasincoban.nefesizi.feature.records
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.umityasincoban.nefesizi.core.data.NefesIziRepository
 import com.umityasincoban.nefesizi.core.database.CigaretteProductEntity
 import com.umityasincoban.nefesizi.core.database.SmokingRecordEntity
 import com.umityasincoban.nefesizi.core.domain.SmokingRecordDraft
+import com.umityasincoban.nefesizi.core.domain.userMessage
+import com.umityasincoban.nefesizi.core.domain.validateSmokingRecordDraft
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Clock
 import java.time.Instant
@@ -95,14 +98,33 @@ private data class RecordsInteraction(
 class RecordsViewModel @Inject constructor(
     private val repository: NefesIziRepository,
     private val clock: Clock,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val query = MutableStateFlow("")
     private val filters = MutableStateFlow(RecordFilters())
-    private val interaction = MutableStateFlow(RecordsInteraction())
+    private val interaction = MutableStateFlow(
+        RecordsInteraction(editor = restoreEditor(emptyList())),
+    )
     private val deletedRecords = Channel<SmokingRecordEntity>(Channel.BUFFERED)
     private val messages = Channel<String>(Channel.BUFFERED)
     val deletions = deletedRecords.receiveAsFlow()
     val notifications = messages.receiveAsFlow()
+
+    init {
+        if (savedStateHandle.get<ArrayList<String>>(EDITOR_SNAPSHOT) != null &&
+            interaction.value.editor == null
+        ) {
+            viewModelScope.launch {
+                repository.observeAllRecords().collect { records ->
+                    val restored = restoreEditor(records)
+                    if (restored != null) {
+                        interaction.value = interaction.value.copy(editor = restored)
+                        return@collect
+                    }
+                }
+            }
+        }
+    }
 
     val state: StateFlow<RecordsUiState> = combine(
         repository.observeAllRecords(),
@@ -111,10 +133,13 @@ class RecordsViewModel @Inject constructor(
         filters,
         interaction,
     ) { records, products, search, activeFilters, interactionState ->
-        val filtered = records.filter { record ->
-            matchesSearch(record, search) &&
-                matchesFilters(record, activeFilters)
-        }
+        val filtered = filterRecords(
+            records = records,
+            search = search,
+            filters = activeFilters,
+            today = LocalDate.now(clock),
+            zoneId = clock.zone,
+        )
         RecordsUiState(
             query = search,
             records = filtered,
@@ -187,7 +212,7 @@ class RecordsViewModel @Inject constructor(
         val now = LocalDateTime.now(clock)
         val defaultProduct = state.value.products.firstOrNull { it.isDefault && !it.isArchived }
             ?: state.value.products.firstOrNull { !it.isArchived }
-        interaction.value = interaction.value.copy(
+        setEditor(
             selectedRecordId = null,
             editor = RecordEditorState(
                 mode = RecordEditorMode.CREATE,
@@ -200,14 +225,18 @@ class RecordsViewModel @Inject constructor(
     }
 
     fun openEdit(record: SmokingRecordEntity) {
-        interaction.value = interaction.value.copy(
+        setEditor(
             selectedRecordId = null,
             editor = editorFrom(record, RecordEditorMode.EDIT, record.smokedAtEpochMillis),
         )
     }
 
+    fun openEditById(id: String) {
+        state.value.records.firstOrNull { it.id == id }?.let(::openEdit)
+    }
+
     fun openDuplicate(record: SmokingRecordEntity) {
-        interaction.value = interaction.value.copy(
+        setEditor(
             selectedRecordId = null,
             editor = editorFrom(record, RecordEditorMode.DUPLICATE, clock.millis()),
         )
@@ -215,34 +244,27 @@ class RecordsViewModel @Inject constructor(
 
     fun dismissEditor() {
         interaction.value = interaction.value.copy(editor = null)
+        savedStateHandle[EDITOR_SNAPSHOT] = null
     }
 
     fun updateEditor(transform: (RecordEditorState) -> RecordEditorState) {
         val editor = interaction.value.editor ?: return
-        interaction.value = interaction.value.copy(editor = transform(editor).copy(error = null))
+        setEditor(editor = transform(editor).copy(error = null))
     }
 
     fun saveEditor() {
         val editor = interaction.value.editor ?: return
         if (editor.isSaving) return
         val smokedAt = parseDateTime(editor.date, editor.time)
-        val error = when {
-            editor.productId.isBlank() -> "Lütfen bir ürün seç."
-            editor.quantity !in 1..99 -> "Adet 1–99 arasında olmalı."
-            editor.consumedQuarter !in 1..4 -> "İçilen oran geçersiz."
-            editor.cravingLevel != null && editor.cravingLevel !in 1..5 ->
-                "İstek seviyesi 1–5 arasında olmalı."
-            smokedAt == null -> "Tarih ve saati YYYY-AA-GG / SS:DD biçiminde gir."
-            smokedAt > clock.millis() -> "Gelecek zamana kayıt eklenemez."
-            else -> null
-        }
-        if (error != null) {
-            updateEditor { it.copy(error = error) }
+        if (smokedAt == null) {
+            updateEditor {
+                it.copy(error = "Tarih ve saati YYYY-AA-GG / SS:DD biçiminde gir.")
+            }
             return
         }
         val draft = SmokingRecordDraft(
             productId = editor.productId,
-            smokedAtEpochMillis = checkNotNull(smokedAt),
+            smokedAtEpochMillis = smokedAt,
             quantity = editor.quantity,
             consumedQuarter = editor.consumedQuarter,
             cravingLevel = editor.cravingLevel,
@@ -251,6 +273,10 @@ class RecordsViewModel @Inject constructor(
             locationType = editor.locationType,
             note = editor.note,
         )
+        validateSmokingRecordDraft(draft, clock.millis())?.let { validationError ->
+            updateEditor { it.copy(error = validationError.userMessage()) }
+            return
+        }
         updateEditor { it.copy(isSaving = true) }
         viewModelScope.launch {
             val saved = if (editor.mode == RecordEditorMode.EDIT && editor.source != null) {
@@ -262,6 +288,7 @@ class RecordsViewModel @Inject constructor(
                 updateEditor { it.copy(isSaving = false, error = "Seçilen ürün artık bulunamıyor.") }
             } else {
                 interaction.value = interaction.value.copy(editor = null)
+                savedStateHandle[EDITOR_SNAPSHOT] = null
                 messages.send(
                     if (editor.mode == RecordEditorMode.EDIT) "Kayıt güncellendi"
                     else "Kayıt eklendi",
@@ -304,48 +331,64 @@ class RecordsViewModel @Inject constructor(
         )
     }
 
-    private fun matchesSearch(record: SmokingRecordEntity, search: String): Boolean =
-        search.isBlank() ||
-            record.productNameSnapshot.contains(search, ignoreCase = true) ||
-            record.note.orEmpty().contains(search, ignoreCase = true) ||
-            record.trigger.orEmpty().contains(search, ignoreCase = true) ||
-            record.mood.orEmpty().contains(search, ignoreCase = true)
-
-    private fun matchesFilters(record: SmokingRecordEntity, value: RecordFilters): Boolean {
-        val cutoff = when (value.period) {
-            RecordPeriod.ALL -> null
-            RecordPeriod.LAST_7_DAYS -> LocalDate.now(clock).minusDays(6)
-            RecordPeriod.LAST_30_DAYS -> LocalDate.now(clock).minusDays(29)
-            RecordPeriod.CUSTOM -> value.startDate.toLocalDateOrNull()
-        }
-        val endDate = if (value.period == RecordPeriod.CUSTOM) {
-            value.endDate.toLocalDateOrNull()
-        } else {
-            null
-        }
-        val recordDate = Instant.ofEpochMilli(record.smokedAtEpochMillis)
-            .atZone(clock.zone)
-            .toLocalDate()
-        return (cutoff == null || !recordDate.isBefore(cutoff)) &&
-            (endDate == null || !recordDate.isAfter(endDate)) &&
-            (value.productId == null || record.productId == value.productId) &&
-            (value.trigger == null || record.trigger == value.trigger) &&
-            (value.mood == null || record.mood == value.mood) &&
-            (!value.notesOnly || !record.note.isNullOrBlank()) &&
-            (!value.unknownOnly ||
-                record.productId == null ||
-                record.priceMicrosPerCigaretteSnapshot == null ||
-                record.nicotineMicrogramsPerCigaretteSnapshot == null ||
-                record.tarMicrogramsPerCigaretteSnapshot == null ||
-                record.carbonMonoxideMicrogramsPerCigaretteSnapshot == null)
-    }
-
     private fun parseDateTime(date: String, time: String): Long? = runCatching {
         LocalDateTime.of(LocalDate.parse(date.trim()), LocalTime.parse(time.trim(), TIME_FORMAT))
             .atZone(clock.zone)
             .toInstant()
             .toEpochMilli()
     }.getOrNull()
+
+    private fun setEditor(
+        editor: RecordEditorState?,
+        selectedRecordId: String? = interaction.value.selectedRecordId,
+    ) {
+        interaction.value = interaction.value.copy(
+            selectedRecordId = selectedRecordId,
+            editor = editor,
+        )
+        if (editor == null) {
+            savedStateHandle[EDITOR_SNAPSHOT] = null
+        } else {
+            savedStateHandle[EDITOR_SNAPSHOT] = arrayListOf(
+                editor.mode.name,
+                editor.source?.id.orEmpty(),
+                editor.date,
+                editor.time,
+                editor.productId,
+                editor.quantity.toString(),
+                editor.consumedQuarter.toString(),
+                editor.cravingLevel?.toString().orEmpty(),
+                editor.trigger.orEmpty(),
+                editor.mood.orEmpty(),
+                editor.locationType.orEmpty(),
+                editor.note,
+            )
+        }
+    }
+
+    private fun restoreEditor(records: List<SmokingRecordEntity>): RecordEditorState? {
+        val values = savedStateHandle.get<ArrayList<String>>(EDITOR_SNAPSHOT) ?: return null
+        if (values.size != EDITOR_SNAPSHOT_SIZE) return null
+        val mode = runCatching { RecordEditorMode.valueOf(values[0]) }.getOrNull() ?: return null
+        val source = values[1].takeIf(String::isNotBlank)?.let { id ->
+            records.firstOrNull { it.id == id }
+        }
+        if (mode == RecordEditorMode.EDIT && source == null) return null
+        return RecordEditorState(
+            mode = mode,
+            source = source,
+            date = values[2],
+            time = values[3],
+            productId = values[4],
+            quantity = values[5].toIntOrNull() ?: 1,
+            consumedQuarter = values[6].toIntOrNull() ?: 4,
+            cravingLevel = values[7].toIntOrNull(),
+            trigger = values[8].takeIf(String::isNotBlank),
+            mood = values[9].takeIf(String::isNotBlank),
+            locationType = values[10].takeIf(String::isNotBlank),
+            note = values[11],
+        )
+    }
 
     companion object {
         val TRIGGERS = listOf(
@@ -364,8 +407,7 @@ class RecordsViewModel @Inject constructor(
         val MOODS = listOf("Sakin", "Mutlu", "Yorgun", "Gergin", "Üzgün", "Odaklanmış", "Diğer")
         val LOCATIONS = listOf("Ev", "İş", "Dışarı", "Araç", "Sosyal alan", "Diğer")
         private val TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm")
+        private const val EDITOR_SNAPSHOT = "records.editor.snapshot"
+        private const val EDITOR_SNAPSHOT_SIZE = 12
     }
 }
-
-private fun String.toLocalDateOrNull(): LocalDate? =
-    takeIf(String::isNotBlank)?.let { runCatching { LocalDate.parse(it.trim()) }.getOrNull() }

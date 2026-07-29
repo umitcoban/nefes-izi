@@ -21,6 +21,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -80,6 +81,22 @@ fun SettingsScreen(
             }
         }
         item {
+            SettingsCard(Icons.Outlined.Palette, "Bugün ekranı") {
+                PreferenceSwitch(
+                    title = "Tahmini maliyet",
+                    supporting = "Günlük maliyet kartını göster",
+                    checked = state.todayDisplay.showCost,
+                    onCheckedChange = viewModel::setShowTodayCost,
+                )
+                PreferenceSwitch(
+                    title = "Tahmini emisyonlar",
+                    supporting = "Nikotin, katran ve CO kartlarını göster",
+                    checked = state.todayDisplay.showExposure,
+                    onCheckedChange = viewModel::setShowTodayExposure,
+                )
+            }
+        }
+        item {
             SettingsCard(Icons.Outlined.Storage, "Sigara ürünleri") {
                 if (state.products.isEmpty()) {
                     Text(
@@ -131,6 +148,29 @@ fun SettingsScreen(
         }
     }
 
+}
+
+@Composable
+private fun PreferenceSwitch(
+    title: String,
+    supporting: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                supporting,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
 }
 
 @Composable

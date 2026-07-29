@@ -28,10 +28,9 @@ class CreateSmokingRecordUseCase @Inject constructor(
         draft: SmokingRecordDraft,
     ): SmokingRecordEntity {
         require(draft.productId == product.id)
-        require(draft.quantity > 0)
-        require(draft.consumedQuarter in 1..4)
-        require(draft.cravingLevel == null || draft.cravingLevel in 1..5)
+        require(validateSmokingRecordDraft(draft, clock.millis()) == null)
         val revision = dao.getProductRevisionAt(product.id, draft.smokedAtEpochMillis)
+        val snapshot = resolveRecordSnapshot(null, product, revision)
         val now = clock.millis()
         val record = SmokingRecordEntity(
             id = idGenerator.newId(),
@@ -39,15 +38,15 @@ class CreateSmokingRecordUseCase @Inject constructor(
             zoneIdSnapshot = clock.zone.id,
             quantity = draft.quantity,
             consumedQuarter = draft.consumedQuarter,
-            productId = product.id,
-            productRevisionIdSnapshot = revision?.id,
-            productNameSnapshot = product.name,
-            nicotineMicrogramsPerCigaretteSnapshot = revision?.nicotineMicrogramsPerCigarette,
-            tarMicrogramsPerCigaretteSnapshot = revision?.tarMicrogramsPerCigarette,
-            carbonMonoxideMicrogramsPerCigaretteSnapshot = revision?.carbonMonoxideMicrogramsPerCigarette,
-            priceMicrosPerCigaretteSnapshot = revision?.priceMicrosPerCigarette,
-            currencyCodeSnapshot = revision?.currencyCode ?: product.currencyCode,
-            valueSourceSnapshot = revision?.valueSource,
+            productId = snapshot.productId,
+            productRevisionIdSnapshot = snapshot.revisionId,
+            productNameSnapshot = snapshot.productName,
+            nicotineMicrogramsPerCigaretteSnapshot = snapshot.nicotineMicrograms,
+            tarMicrogramsPerCigaretteSnapshot = snapshot.tarMicrograms,
+            carbonMonoxideMicrogramsPerCigaretteSnapshot = snapshot.carbonMonoxideMicrograms,
+            priceMicrosPerCigaretteSnapshot = snapshot.priceMicros,
+            currencyCodeSnapshot = snapshot.currencyCode,
+            valueSourceSnapshot = snapshot.valueSource,
             cravingLevel = draft.cravingLevel,
             trigger = draft.trigger?.trim()?.takeIf(String::isNotEmpty),
             mood = draft.mood?.trim()?.takeIf(String::isNotEmpty),

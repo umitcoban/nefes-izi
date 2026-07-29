@@ -83,10 +83,18 @@ import java.util.Locale
 @Composable
 fun RecordsScreen(
     snackbarHostState: SnackbarHostState,
+    initialEditRecordId: String? = null,
     viewModel: RecordsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     var deleteCandidate by remember { mutableStateOf<SmokingRecordEntity?>(null) }
+    var initialEditConsumed by remember(initialEditRecordId) { mutableStateOf(false) }
+    LaunchedEffect(initialEditRecordId, state.records) {
+        if (!initialEditConsumed && initialEditRecordId != null && state.records.isNotEmpty()) {
+            viewModel.openEditById(initialEditRecordId)
+            initialEditConsumed = true
+        }
+    }
     LaunchedEffect(Unit) {
         viewModel.deletions.collect { record ->
             val result = snackbarHostState.showSnackbar("Kayıt silindi", "Geri al")
