@@ -37,7 +37,6 @@ import android.Manifest
 import android.os.Build
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.FragmentActivity
 import androidx.biometric.BiometricPrompt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -50,6 +49,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.umityasincoban.nefesizi.core.data.ThemeMode
 import com.umityasincoban.nefesizi.core.database.CigaretteProductEntity
 import com.umityasincoban.nefesizi.BuildConfig
+import com.umityasincoban.nefesizi.MainActivity
 
 @Composable
 fun SettingsScreen(
@@ -71,7 +71,7 @@ fun SettingsScreen(
         ActivityResultContracts.RequestPermission(),
     ) { granted -> viewModel.setInactivityNotification(granted) }
     val biometricPrompt = remember(context) {
-        val activity = context as FragmentActivity
+        val activity = context as MainActivity
         BiometricPrompt(
             activity,
             ContextCompat.getMainExecutor(context),
@@ -79,6 +79,7 @@ fun SettingsScreen(
                 override fun onAuthenticationSucceeded(
                     result: BiometricPrompt.AuthenticationResult,
                 ) {
+                    activity.markBiometricAuthenticated()
                     viewModel.setBiometricLock(true)
                 }
             },

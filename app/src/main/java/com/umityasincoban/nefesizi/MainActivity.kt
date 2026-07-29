@@ -35,9 +35,6 @@ class MainActivity : FragmentActivity() {
     private val appViewModel: AppViewModel by viewModels()
     private val locked = mutableStateOf(false)
     private var lockEnabled = false
-    private var authenticatedThisSession = false
-    private var lockPreferenceLoaded = false
-    private var backgroundAtElapsed = 0L
     private lateinit var lockPrompt: BiometricPrompt
     private lateinit var lockPromptInfo: BiometricPrompt.PromptInfo
 
@@ -51,7 +48,7 @@ class MainActivity : FragmentActivity() {
                 override fun onAuthenticationSucceeded(
                     result: BiometricPrompt.AuthenticationResult,
                 ) {
-                    authenticatedThisSession = true
+                    appViewModel.appLockSession.markAuthenticated()
                     locked.value = false
                 }
             },
@@ -66,18 +63,14 @@ class MainActivity : FragmentActivity() {
             .build()
         lifecycleScope.launch {
             appViewModel.personalization.collect { personalization ->
-                val wasEnabled = lockEnabled
                 lockEnabled = personalization.biometricLock
-                if (!lockPreferenceLoaded) {
-                    lockPreferenceLoaded = true
-                } else if (!wasEnabled && lockEnabled) {
-                    // Ayar yalnızca Settings ekranındaki başarılı doğrulamadan sonra açılır.
-                    authenticatedThisSession = true
-                }
-                if (lockEnabled && !authenticatedThisSession && !locked.value) {
+                if (lockEnabled && !appViewModel.appLockSession.isAuthenticated && !locked.value) {
                     showLock()
                 }
-                if (!lockEnabled) locked.value = false
+                if (!lockEnabled) {
+                    appViewModel.appLockSession.clearAuthentication()
+                    locked.value = false
+                }
             }
         }
         setContent {
@@ -112,25 +105,25 @@ class MainActivity : FragmentActivity() {
 
     override fun onStart() {
         super.onStart()
-        if (lockEnabled && backgroundAtElapsed > 0L &&
-            SystemClock.elapsedRealtime() - backgroundAtElapsed >= LOCK_AFTER_MILLIS
-        ) {
-            authenticatedThisSession = false
+        val expired = appViewModel.appLockSession.onForegrounded(SystemClock.elapsedRealtime())
+        if (lockEnabled && expired) {
             showLock()
         }
     }
 
     override fun onStop() {
         super.onStop()
-        if (!isChangingConfigurations) backgroundAtElapsed = SystemClock.elapsedRealtime()
+        if (!isChangingConfigurations) {
+            appViewModel.appLockSession.markBackgrounded(SystemClock.elapsedRealtime())
+        }
+    }
+
+    fun markBiometricAuthenticated() {
+        appViewModel.appLockSession.markAuthenticated()
     }
 
     private fun showLock() {
         locked.value = true
         lockPrompt.authenticate(lockPromptInfo)
-    }
-
-    private companion object {
-        const val LOCK_AFTER_MILLIS = 30_000L
     }
 }
