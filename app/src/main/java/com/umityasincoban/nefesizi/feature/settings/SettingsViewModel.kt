@@ -10,6 +10,7 @@ import com.umityasincoban.nefesizi.core.database.CigaretteProductEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -19,6 +20,7 @@ data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val products: List<CigaretteProductEntity> = emptyList(),
     val todayDisplay: TodayDisplayPreferences = TodayDisplayPreferences(),
+    val wakeTime: String = "",
 )
 
 @HiltViewModel
@@ -26,12 +28,16 @@ class SettingsViewModel @Inject constructor(
     private val repository: NefesIziRepository,
     private val preferences: AppPreferences,
 ) : ViewModel() {
+    private val wakeTimeDraft = MutableStateFlow<String?>(null)
+
     val state: StateFlow<SettingsUiState> = combine(
         preferences.themeMode,
         repository.observeProducts(),
         preferences.todayDisplayPreferences,
-    ) { theme, products, todayDisplay ->
-        SettingsUiState(theme, products, todayDisplay)
+        preferences.wakeTime,
+        wakeTimeDraft,
+    ) { theme, products, todayDisplay, wakeTime, draft ->
+        SettingsUiState(theme, products, todayDisplay, draft ?: wakeTime.orEmpty())
     }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
@@ -49,5 +55,15 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowTodayExposure(show: Boolean) {
         viewModelScope.launch { preferences.setShowTodayExposure(show) }
+    }
+
+    fun setWakeTime(value: String) {
+        val normalized = value.trim().take(5)
+        wakeTimeDraft.value = normalized
+        if (normalized.isBlank() || runCatching { java.time.LocalTime.parse(normalized) }.isSuccess) {
+            viewModelScope.launch {
+                preferences.setWakeTime(normalized.takeIf(String::isNotBlank))
+            }
+        }
     }
 }

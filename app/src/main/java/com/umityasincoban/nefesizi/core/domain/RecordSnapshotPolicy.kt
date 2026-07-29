@@ -41,7 +41,10 @@ fun resolveRecordSnapshot(
                 ?: product.carbonMonoxideMicrogramsPerCigarette.takeIf {
                     preserved.productRevisionIdSnapshot == null
                 },
-            priceMicros = preserved.priceMicrosPerCigaretteSnapshot,
+            priceMicros = preserved.priceMicrosPerCigaretteSnapshot
+                ?: product.priceMicrosPerCigarette.takeIf {
+                    preserved.productRevisionIdSnapshot == null
+                },
             currencyCode = preserved.currencyCodeSnapshot,
             valueSource = preserved.valueSourceSnapshot
                 ?: product.valueSource.takeIf { preserved.productRevisionIdSnapshot == null },
@@ -57,7 +60,8 @@ fun resolveRecordSnapshot(
                 ?: product.tarMicrogramsPerCigarette,
             carbonMonoxideMicrograms = revision?.carbonMonoxideMicrogramsPerCigarette
                 ?: product.carbonMonoxideMicrogramsPerCigarette,
-            priceMicros = revision?.priceMicrosPerCigarette,
+            priceMicros = revision?.priceMicrosPerCigarette
+                ?: product.priceMicrosPerCigarette,
             currencyCode = revision?.currencyCode ?: product.currencyCode,
             valueSource = revision?.valueSource ?: product.valueSource,
         )

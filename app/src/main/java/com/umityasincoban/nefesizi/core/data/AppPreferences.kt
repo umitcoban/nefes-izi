@@ -34,6 +34,9 @@ class AppPreferences @Inject constructor(
             )
         }
 
+    val wakeTime: Flow<String?> = context.dataStore.data
+        .map { preferences -> preferences[WAKE_TIME]?.takeIf(String::isNotBlank) }
+
     suspend fun completeOnboarding() {
         context.dataStore.edit { it[ONBOARDING_COMPLETED] = true }
     }
@@ -50,11 +53,22 @@ class AppPreferences @Inject constructor(
         context.dataStore.edit { it[SHOW_TODAY_EXPOSURE] = show }
     }
 
+    suspend fun setWakeTime(value: String?) {
+        context.dataStore.edit { preferences ->
+            if (value.isNullOrBlank()) {
+                preferences.remove(WAKE_TIME)
+            } else {
+                preferences[WAKE_TIME] = value
+            }
+        }
+    }
+
     private companion object {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val SHOW_TODAY_COST = booleanPreferencesKey("show_today_cost")
         val SHOW_TODAY_EXPOSURE = booleanPreferencesKey("show_today_exposure")
+        val WAKE_TIME = stringPreferencesKey("wake_time")
     }
 }
 

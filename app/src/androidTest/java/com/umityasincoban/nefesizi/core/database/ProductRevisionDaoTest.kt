@@ -111,7 +111,7 @@ class ProductRevisionDaoTest {
     }
 
     @Test
-    fun recordBeforeFirstRevisionUsesProductChemicalsButKeepsPriceUnknown() = runBlocking {
+    fun recordBeforeFirstRevisionUsesKnownProductSnapshotValues() = runBlocking {
         val product = product()
         dao.createProductWithRevision(
             product,
@@ -133,7 +133,7 @@ class ProductRevisionDaoTest {
         assertEquals(700L, record.nicotineMicrogramsPerCigaretteSnapshot)
         assertEquals(8_000L, record.tarMicrogramsPerCigaretteSnapshot)
         assertEquals(9_000L, record.carbonMonoxideMicrogramsPerCigaretteSnapshot)
-        assertNull(record.priceMicrosPerCigaretteSnapshot)
+        assertEquals(5_000_000L, record.priceMicrosPerCigaretteSnapshot)
     }
 
     @Test

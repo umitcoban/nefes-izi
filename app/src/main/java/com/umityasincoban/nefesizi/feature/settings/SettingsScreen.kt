@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -93,6 +94,17 @@ fun SettingsScreen(
                     supporting = "Nikotin, katran ve CO kartlarını göster",
                     checked = state.todayDisplay.showExposure,
                     onCheckedChange = viewModel::setShowTodayExposure,
+                )
+                OutlinedTextField(
+                    value = state.wakeTime,
+                    onValueChange = viewModel::setWakeTime,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Uyanma saati (isteğe bağlı)") },
+                    placeholder = { Text("07:30") },
+                    supportingText = {
+                        Text("Analizde ilk kayda kadar süreyi hesaplamak için kullanılır.")
+                    },
+                    singleLine = true,
                 )
             }
         }

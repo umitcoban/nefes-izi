@@ -3,77 +3,111 @@ package com.umityasincoban.nefesizi.feature.analytics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.umityasincoban.nefesizi.core.data.NefesIziRepository
-import com.umityasincoban.nefesizi.core.domain.calculateExposure
+import com.umityasincoban.nefesizi.core.domain.AdvancedAnalytics
+import com.umityasincoban.nefesizi.core.domain.CurrencyAmount
+import com.umityasincoban.nefesizi.core.domain.calculateAdvancedAnalytics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Clock
-import java.time.Duration
 import java.time.LocalDate
-import java.time.ZoneId
+import java.time.DayOfWeek
+import java.time.LocalTime
+import java.time.temporal.TemporalAdjusters
+import com.umityasincoban.nefesizi.core.data.AppPreferences
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-data class DailyCount(val date: LocalDate, val count: Int)
+enum class AnalyticsPeriod(val label: String, val days: Long?) {
+    DAYS_7("7 gün", 7),
+    DAYS_30("30 gün", 30),
+    DAYS_90("90 gün", 90),
+    ALL("Tümü", null),
+    CUSTOM("Özel", null),
+}
+
+data class AnalyticsSelection(
+    val period: AnalyticsPeriod = AnalyticsPeriod.DAYS_30,
+    val customStart: String = "",
+    val customEnd: String = "",
+)
 
 data class AnalyticsUiState(
-    val total: Int = 0,
-    val dailyAverage: Double = 0.0,
-    val longestGapMinutes: Long? = null,
-    val peakHour: Int? = null,
-    val nicotineMicrograms: Long? = null,
-    val nicotineKnown: Int = 0,
-    val nicotineUnknown: Int = 0,
-    val lastSevenDays: List<DailyCount> = emptyList(),
-    val hasEnoughData: Boolean = false,
+    val selection: AnalyticsSelection = AnalyticsSelection(),
+    val analytics: AdvancedAnalytics? = null,
+    val todayCosts: List<CurrencyAmount> = emptyList(),
+    val weekCosts: List<CurrencyAmount> = emptyList(),
+    val monthCosts: List<CurrencyAmount> = emptyList(),
+    val dateError: String? = null,
 )
 
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
     repository: NefesIziRepository,
+    preferences: AppPreferences,
     clock: Clock,
 ) : ViewModel() {
-    private val zone = ZoneId.systemDefault()
     private val today = LocalDate.now(clock)
-    private val startDate = today.minusDays(29)
-    private val startInstant = startDate.atStartOfDay(zone).toInstant()
+    private val selection = MutableStateFlow(AnalyticsSelection())
 
-    val state: StateFlow<AnalyticsUiState> = repository.observeAllRecords().map { allRecords ->
-        val records = allRecords.filter { it.smokedAtEpochMillis >= startInstant.toEpochMilli() }
-        val byDate = records.groupBy {
-            java.time.Instant.ofEpochMilli(it.smokedAtEpochMillis)
-                .atZone(ZoneId.of(it.zoneIdSnapshot))
-                .toLocalDate()
-        }
-        val daily = (6L downTo 0L).map { offset ->
-            val date = today.minusDays(offset)
-            DailyCount(date, byDate[date].orEmpty().sumOf { it.quantity })
-        }
-        val total = records.sumOf { it.quantity }
-        val sorted = records.sortedBy { it.smokedAtEpochMillis }
-        val longest = sorted.zipWithNext { first, second ->
-            Duration.ofMillis(second.smokedAtEpochMillis - first.smokedAtEpochMillis).toMinutes()
-        }.maxOrNull()
-        val peakHour = records
-            .groupingBy {
-                java.time.Instant.ofEpochMilli(it.smokedAtEpochMillis)
-                    .atZone(ZoneId.of(it.zoneIdSnapshot)).hour
-            }
-            .eachCount()
-            .maxByOrNull { it.value }
-            ?.key
-        val nicotine = calculateExposure(records) { it.nicotineMicrogramsPerCigaretteSnapshot }
+    val state: StateFlow<AnalyticsUiState> = combine(
+        repository.observeAllRecords(),
+        selection,
+        preferences.wakeTime,
+    ) { records, selected, wakeTimeValue ->
+        val requestedRange = selected.resolveRange(today)
+        val range = requestedRange ?: AnalyticsPeriod.DAYS_30.resolveRange(today)
+        val wakeTime = wakeTimeValue?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
+        val analytics = calculateAdvancedAnalytics(records, range.first, range.second, wakeTime)
+        val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val monthStart = today.withDayOfMonth(1)
         AnalyticsUiState(
-            total = total,
-            dailyAverage = total / 30.0,
-            longestGapMinutes = longest,
-            peakHour = peakHour,
-            nicotineMicrograms = nicotine.micrograms,
-            nicotineKnown = nicotine.knownCount,
-            nicotineUnknown = nicotine.unknownCount,
-            lastSevenDays = daily,
-            hasEnoughData = byDate.size >= 7,
+            selection = selected,
+            analytics = analytics,
+            todayCosts = calculateAdvancedAnalytics(records, today, today).costs,
+            weekCosts = calculateAdvancedAnalytics(records, weekStart, today).costs,
+            monthCosts = calculateAdvancedAnalytics(records, monthStart, today).costs,
+            dateError = if (selected.period == AnalyticsPeriod.CUSTOM && requestedRange == null) {
+                "Başlangıç ve bitiş tarihini YYYY-AA-GG biçiminde gir."
+            } else {
+                null
+            },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AnalyticsUiState())
+
+    fun selectPeriod(period: AnalyticsPeriod) {
+        selection.value = selection.value.copy(period = period)
+    }
+
+    fun updateCustomStart(value: String) {
+        selection.value = selection.value.copy(
+            period = AnalyticsPeriod.CUSTOM,
+            customStart = value.take(10),
+        )
+    }
+
+    fun updateCustomEnd(value: String) {
+        selection.value = selection.value.copy(
+            period = AnalyticsPeriod.CUSTOM,
+            customEnd = value.take(10),
+        )
+    }
 }
+
+private fun AnalyticsSelection.resolveRange(today: LocalDate): Pair<LocalDate?, LocalDate>? =
+    when (period) {
+        AnalyticsPeriod.CUSTOM -> {
+            val start = customStart.toDateOrNull()
+            val end = customEnd.toDateOrNull()
+            if (start == null || end == null || start > end || end > today) null else start to end
+        }
+        else -> period.resolveRange(today)
+    }
+
+private fun AnalyticsPeriod.resolveRange(today: LocalDate): Pair<LocalDate?, LocalDate> =
+    days?.let { today.minusDays(it - 1) } to today
+
+private fun String.toDateOrNull(): LocalDate? =
+    runCatching { LocalDate.parse(trim()) }.getOrNull()

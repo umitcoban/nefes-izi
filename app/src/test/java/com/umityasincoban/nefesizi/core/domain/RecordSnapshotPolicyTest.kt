@@ -51,11 +51,11 @@ class RecordSnapshotPolicyTest {
     }
 
     @Test
-    fun `date before first revision uses known product chemicals but not an inferred price`() {
+    fun `date before first revision snapshots known product chemicals and price`() {
         val result = resolveRecordSnapshot(null, product(), null)
 
         assertNull(result.revisionId)
-        assertNull(result.priceMicros)
+        assertEquals(6_000_000L, result.priceMicros)
         assertEquals(800L, result.nicotineMicrograms)
         assertEquals(9_000L, result.tarMicrograms)
         assertEquals(10_000L, result.carbonMonoxideMicrograms)
@@ -64,7 +64,7 @@ class RecordSnapshotPolicyTest {
     }
 
     @Test
-    fun `existing unknown snapshot stays historical while revision remains absent`() {
+    fun `existing partial snapshot keeps known chemicals and fills missing product price`() {
         val existing = record().copy(
             productRevisionIdSnapshot = null,
             priceMicrosPerCigaretteSnapshot = null,
@@ -76,12 +76,12 @@ class RecordSnapshotPolicyTest {
 
         assertEquals("Eski ad", result.productName)
         assertEquals(650L, result.nicotineMicrograms)
-        assertNull(result.priceMicros)
+        assertEquals(6_000_000L, result.priceMicros)
         assertNull(result.revisionId)
     }
 
     @Test
-    fun `legacy record without revision is enriched with product chemicals on edit`() {
+    fun `legacy record without revision is enriched with product values on edit`() {
         val legacy = record().copy(
             productRevisionIdSnapshot = null,
             nicotineMicrogramsPerCigaretteSnapshot = null,
@@ -96,7 +96,7 @@ class RecordSnapshotPolicyTest {
         assertEquals(800L, result.nicotineMicrograms)
         assertEquals(9_000L, result.tarMicrograms)
         assertEquals(10_000L, result.carbonMonoxideMicrograms)
-        assertNull(result.priceMicros)
+        assertEquals(6_000_000L, result.priceMicros)
         assertEquals("USER_ENTERED", result.valueSource)
     }
 
