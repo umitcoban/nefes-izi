@@ -6,6 +6,8 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.umityasincoban.nefesizi.core.common.IdGenerator
 import com.umityasincoban.nefesizi.core.domain.CreateSmokingRecordUseCase
+import com.umityasincoban.nefesizi.core.domain.SmokingRecordDraft
+import com.umityasincoban.nefesizi.core.domain.UpdateSmokingRecordUseCase
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -130,6 +132,101 @@ class ProductRevisionDaoTest {
         assertNull(record.productRevisionIdSnapshot)
         assertNull(record.nicotineMicrogramsPerCigaretteSnapshot)
         assertNull(record.priceMicrosPerCigaretteSnapshot)
+    }
+
+    @Test
+    fun detailedRecordPersistsContextAndHistoricalSnapshot() = runBlocking {
+        val product = product()
+        dao.createProductWithRevision(
+            product,
+            revision("revision-old", 1_000L, 5_000_000L),
+        )
+        val useCase = CreateSmokingRecordUseCase(
+            dao = dao,
+            clock = Clock.fixed(Instant.ofEpochMilli(3_000L), ZoneOffset.UTC),
+            idGenerator = IdGenerator { "record-detailed" },
+        )
+
+        val record = useCase.create(
+            product = product,
+            draft = SmokingRecordDraft(
+                productId = product.id,
+                smokedAtEpochMillis = 1_500L,
+                quantity = 2,
+                consumedQuarter = 3,
+                cravingLevel = 4,
+                trigger = "Kahve",
+                mood = "Sakin",
+                locationType = "Ev",
+                note = "Sabah kaydı",
+            ),
+        )
+
+        assertEquals(2, record.quantity)
+        assertEquals(3, record.consumedQuarter)
+        assertEquals(4, record.cravingLevel)
+        assertEquals("Kahve", record.trigger)
+        assertEquals("Sakin", record.mood)
+        assertEquals("Ev", record.locationType)
+        assertEquals("Sabah kaydı", record.note)
+        assertEquals("revision-old", record.productRevisionIdSnapshot)
+        assertEquals(5_000_000L, record.priceMicrosPerCigaretteSnapshot)
+    }
+
+    @Test
+    fun editingMetadataPreservesSnapshotButCrossingRevisionResnapshots() = runBlocking {
+        val product = product()
+        dao.createProductWithRevision(
+            product,
+            revision("revision-old", 1_000L, 5_000_000L),
+        )
+        dao.insertProductRevision(
+            revision("revision-new", 2_000L, 6_000_000L),
+        )
+        val clock = Clock.fixed(Instant.ofEpochMilli(4_000L), ZoneOffset.UTC)
+        val created = CreateSmokingRecordUseCase(
+            dao = dao,
+            clock = clock,
+            idGenerator = IdGenerator { "record-edit" },
+        )(product, 1_500L)
+        val update = UpdateSmokingRecordUseCase(dao, clock)
+        val renamedProduct = product.copy(name = "Yeni ürün adı")
+
+        val metadataEdit = update(
+            existing = created,
+            product = renamedProduct,
+            draft = SmokingRecordDraft(
+                productId = product.id,
+                smokedAtEpochMillis = 1_700L,
+                quantity = 2,
+                consumedQuarter = 2,
+                note = "Düzenlendi",
+            ),
+        )
+
+        assertEquals("revision-old", metadataEdit.productRevisionIdSnapshot)
+        assertEquals("Test", metadataEdit.productNameSnapshot)
+        assertEquals(5_000_000L, metadataEdit.priceMicrosPerCigaretteSnapshot)
+        assertEquals("Düzenlendi", metadataEdit.note)
+
+        val crossedRevision = update(
+            existing = metadataEdit,
+            product = renamedProduct,
+            draft = SmokingRecordDraft(
+                productId = product.id,
+                smokedAtEpochMillis = 2_500L,
+                quantity = 2,
+                consumedQuarter = 2,
+            ),
+        )
+
+        assertEquals("revision-new", crossedRevision.productRevisionIdSnapshot)
+        assertEquals("Yeni ürün adı", crossedRevision.productNameSnapshot)
+        assertEquals(6_000_000L, crossedRevision.priceMicrosPerCigaretteSnapshot)
+        assertEquals(
+            6_000_000L,
+            dao.observeAllRecords().first().single().priceMicrosPerCigaretteSnapshot,
+        )
     }
 
     @Test

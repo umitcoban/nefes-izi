@@ -7,6 +7,8 @@ import com.umityasincoban.nefesizi.core.database.DailyHealthEntryEntity
 import com.umityasincoban.nefesizi.core.database.NefesIziDao
 import com.umityasincoban.nefesizi.core.database.SmokingRecordEntity
 import com.umityasincoban.nefesizi.core.domain.CreateSmokingRecordUseCase
+import com.umityasincoban.nefesizi.core.domain.SmokingRecordDraft
+import com.umityasincoban.nefesizi.core.domain.UpdateSmokingRecordUseCase
 import java.time.Clock
 import java.time.Instant
 import java.util.Currency
@@ -21,6 +23,7 @@ class NefesIziRepository @Inject constructor(
     private val clock: Clock,
     private val idGenerator: IdGenerator,
     private val createSmokingRecord: CreateSmokingRecordUseCase,
+    private val updateSmokingRecord: UpdateSmokingRecordUseCase,
 ) {
     fun observeDefaultProduct(): Flow<CigaretteProductEntity?> = dao.observeDefaultProduct()
 
@@ -169,6 +172,19 @@ class NefesIziRepository @Inject constructor(
     suspend fun logWithDefaultProduct(): SmokingRecordEntity? {
         val product = dao.getDefaultProduct() ?: return null
         return createSmokingRecord(product)
+    }
+
+    suspend fun createRecord(draft: SmokingRecordDraft): SmokingRecordEntity? {
+        val product = dao.getProduct(draft.productId) ?: return null
+        return createSmokingRecord.create(product, draft)
+    }
+
+    suspend fun updateRecord(
+        existing: SmokingRecordEntity,
+        draft: SmokingRecordDraft,
+    ): SmokingRecordEntity? {
+        val product = dao.getProduct(draft.productId) ?: return null
+        return updateSmokingRecord(existing, product, draft)
     }
 
     suspend fun undoRecord(id: String) = dao.deleteRecord(id)

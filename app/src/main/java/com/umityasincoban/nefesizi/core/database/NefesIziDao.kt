@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -24,6 +25,9 @@ interface NefesIziDao {
 
     @Query("SELECT * FROM cigarette_products WHERE isDefault = 1 AND isArchived = 0 LIMIT 1")
     suspend fun getDefaultProduct(): CigaretteProductEntity?
+
+    @Query("SELECT * FROM cigarette_products WHERE id = :id LIMIT 1")
+    suspend fun getProduct(id: String): CigaretteProductEntity?
 
     @Query("UPDATE cigarette_products SET isDefault = 0, updatedAtEpochMillis = :updatedAt")
     suspend fun clearDefaultProduct(updatedAt: Long)
@@ -131,6 +135,9 @@ interface NefesIziDao {
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertRecord(record: SmokingRecordEntity)
+
+    @Update
+    suspend fun updateRecord(record: SmokingRecordEntity)
 
     @Query("DELETE FROM smoking_records WHERE id = :id")
     suspend fun deleteRecord(id: String)
