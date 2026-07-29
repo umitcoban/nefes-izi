@@ -39,18 +39,20 @@ import com.umityasincoban.nefesizi.feature.products.ProductManagementScreen
 import com.umityasincoban.nefesizi.feature.records.RecordsScreen
 import com.umityasincoban.nefesizi.feature.settings.SettingsScreen
 import com.umityasincoban.nefesizi.feature.today.TodayScreen
+import com.umityasincoban.nefesizi.core.data.PersonalizationPreferences
 
 @Composable
 fun NefesIziRoot(
     viewModel: AppViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    val personalization by viewModel.personalization.collectAsState()
     when (state) {
         AppState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
         AppState.Onboarding -> OnboardingScreen()
-        AppState.Ready -> MainNavigation()
+        AppState.Ready -> MainNavigation(personalization)
     }
 }
 
@@ -69,19 +71,22 @@ private val destinations = listOf(
 )
 
 @Composable
-private fun MainNavigation() {
+private fun MainNavigation(personalization: PersonalizationPreferences) {
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     val backStack by navController.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
-    val showBottomBar = destinations.any { it.route == currentRoute }
+    val visibleDestinations = destinations.filter {
+        it.route != "health" || personalization.showHealthTab
+    }
+    val showBottomBar = visibleDestinations.any { it.route == currentRoute }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                    destinations.forEach { destination ->
+                    visibleDestinations.forEach { destination ->
                         NavigationBarItem(
                             selected = currentRoute == destination.route,
                             onClick = {
@@ -125,6 +130,7 @@ private fun MainNavigation() {
             composable("settings") {
                 SettingsScreen(
                     onOpenProducts = { navController.navigate("product-management") },
+                    snackbarHostState = snackbarHostState,
                 )
             }
             composable("product-management") {

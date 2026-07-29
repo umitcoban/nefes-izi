@@ -10,6 +10,7 @@ import com.umityasincoban.nefesizi.core.domain.ExposureTotal
 import com.umityasincoban.nefesizi.core.domain.TodaySummary
 import com.umityasincoban.nefesizi.core.domain.calculateExposure
 import com.umityasincoban.nefesizi.core.domain.calculateTodaySummary
+import com.umityasincoban.nefesizi.core.domain.logicalDayRange
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Clock
 import javax.inject.Inject
@@ -38,6 +39,7 @@ data class TodayUiState(
     val showCost: Boolean = true,
     val showExposure: Boolean = true,
     val isLogging: Boolean = false,
+    val dayStartHour: Int = 0,
 ) {
     val totalCount: Int get() = summary.totalCount
 }
@@ -67,10 +69,6 @@ class TodayViewModel @Inject constructor(
     val effects: Flow<TodayEffect> = effectsChannel.receiveAsFlow()
 
     private val zone = clock.zone
-    private val today = clock.instant().atZone(zone).toLocalDate()
-    private val start = today.atStartOfDay(zone).toInstant()
-    private val end = today.plusDays(1).atStartOfDay(zone).toInstant()
-
     private val products = combine(
         repository.observeDefaultProduct(),
         repository.observeProducts(),
@@ -85,10 +83,16 @@ class TodayViewModel @Inject constructor(
 
     val state: StateFlow<TodayUiState> = combine(
         products,
-        repository.observeRecords(start, end),
+        repository.observeAllRecords(),
         preferences.todayDisplayPreferences,
         isLogging,
-    ) { productState, records, display, logging ->
+        preferences.personalization,
+    ) { productState, allRecords, display, logging, personalization ->
+        val range = logicalDayRange(clock.instant(), zone, personalization.dayStartHour)
+        val records = allRecords.filter {
+            val instant = java.time.Instant.ofEpochMilli(it.smokedAtEpochMillis)
+            !instant.isBefore(range.start) && instant.isBefore(range.endExclusive)
+        }
         TodayUiState(
             isLoading = false,
             defaultProduct = productState.default,
@@ -108,6 +112,7 @@ class TodayViewModel @Inject constructor(
             showCost = display.showCost,
             showExposure = display.showExposure,
             isLogging = logging,
+            dayStartHour = personalization.dayStartHour,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUiState())
 

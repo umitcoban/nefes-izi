@@ -17,6 +17,9 @@ interface NefesIziDao {
     @Query("SELECT * FROM cigarette_products ORDER BY isArchived ASC, isDefault DESC, updatedAtEpochMillis DESC")
     fun observeAllProducts(): Flow<List<CigaretteProductEntity>>
 
+    @Query("SELECT * FROM cigarette_products")
+    suspend fun getAllProducts(): List<CigaretteProductEntity>
+
     @Query("SELECT COUNT(*) FROM cigarette_products WHERE isArchived = 0")
     suspend fun getActiveProductCount(): Int
 
@@ -59,6 +62,9 @@ interface NefesIziDao {
         """,
     )
     fun observeProductRevisions(productId: String): Flow<List<CigaretteProductRevisionEntity>>
+
+    @Query("SELECT * FROM cigarette_product_revisions")
+    suspend fun getAllProductRevisions(): List<CigaretteProductRevisionEntity>
 
     @Transaction
     suspend fun createProductWithRevision(
@@ -157,6 +163,9 @@ interface NefesIziDao {
     @Query("SELECT * FROM smoking_records ORDER BY smokedAtEpochMillis DESC")
     fun observeAllRecords(): Flow<List<SmokingRecordEntity>>
 
+    @Query("SELECT * FROM smoking_records")
+    suspend fun getAllRecords(): List<SmokingRecordEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun restoreRecord(record: SmokingRecordEntity)
 
@@ -172,6 +181,63 @@ interface NefesIziDao {
     )
     fun observeHealthEntries(startDate: String, endDate: String): Flow<List<DailyHealthEntryEntity>>
 
+    @Query("SELECT * FROM daily_health_entries")
+    suspend fun getAllHealthEntries(): List<DailyHealthEntryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertHealthEntry(entry: DailyHealthEntryEntity)
+
+    @Upsert
+    suspend fun upsertProducts(products: List<CigaretteProductEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertProductRevisions(revisions: List<CigaretteProductRevisionEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertRecords(records: List<SmokingRecordEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertHealthEntries(entries: List<DailyHealthEntryEntity>)
+
+    @Query("DELETE FROM smoking_records")
+    suspend fun deleteAllRecords()
+
+    @Query("DELETE FROM cigarette_product_revisions")
+    suspend fun deleteAllProductRevisions()
+
+    @Query("DELETE FROM cigarette_products")
+    suspend fun deleteAllProducts()
+
+    @Query("DELETE FROM daily_health_entries")
+    suspend fun deleteAllHealthEntries()
+
+    @Transaction
+    suspend fun replaceAllData(
+        products: List<CigaretteProductEntity>,
+        revisions: List<CigaretteProductRevisionEntity>,
+        records: List<SmokingRecordEntity>,
+        healthEntries: List<DailyHealthEntryEntity>,
+    ) {
+        deleteAllRecords()
+        deleteAllProductRevisions()
+        deleteAllProducts()
+        deleteAllHealthEntries()
+        upsertProducts(products)
+        upsertProductRevisions(revisions)
+        upsertRecords(records)
+        upsertHealthEntries(healthEntries)
+    }
+
+    @Transaction
+    suspend fun mergeData(
+        products: List<CigaretteProductEntity>,
+        revisions: List<CigaretteProductRevisionEntity>,
+        records: List<SmokingRecordEntity>,
+        healthEntries: List<DailyHealthEntryEntity>,
+    ) {
+        upsertProducts(products)
+        upsertProductRevisions(revisions)
+        upsertRecords(records)
+        upsertHealthEntries(healthEntries)
+    }
 }

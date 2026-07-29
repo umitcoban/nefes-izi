@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.umityasincoban.nefesizi.core.data.AppPreferences
 import com.umityasincoban.nefesizi.core.data.ThemeMode
+import com.umityasincoban.nefesizi.core.data.PersonalizationPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,4 +28,11 @@ class AppViewModel @Inject constructor(
 
     val themeMode: StateFlow<ThemeMode> = preferences.themeMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeMode.SYSTEM)
+
+    val personalization: StateFlow<PersonalizationPreferences> = preferences.personalization
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            PersonalizationPreferences(),
+        )
 }

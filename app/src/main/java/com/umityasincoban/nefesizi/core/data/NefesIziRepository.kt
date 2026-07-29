@@ -16,6 +16,8 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import com.umityasincoban.nefesizi.core.notification.NotificationScheduler
 
 @Singleton
 class NefesIziRepository @Inject constructor(
@@ -24,6 +26,8 @@ class NefesIziRepository @Inject constructor(
     private val idGenerator: IdGenerator,
     private val createSmokingRecord: CreateSmokingRecordUseCase,
     private val updateSmokingRecord: UpdateSmokingRecordUseCase,
+    private val preferences: AppPreferences,
+    private val notificationScheduler: NotificationScheduler,
 ) {
     fun observeDefaultProduct(): Flow<CigaretteProductEntity?> = dao.observeDefaultProduct()
 
@@ -171,17 +175,17 @@ class NefesIziRepository @Inject constructor(
 
     suspend fun logWithDefaultProduct(): SmokingRecordEntity? {
         val product = dao.getDefaultProduct() ?: return null
-        return createSmokingRecord(product)
+        return createSmokingRecord(product).also { refreshInactivityReminder() }
     }
 
     suspend fun logWithProduct(productId: String): SmokingRecordEntity? {
         val product = dao.getProduct(productId)?.takeUnless { it.isArchived } ?: return null
-        return createSmokingRecord(product)
+        return createSmokingRecord(product).also { refreshInactivityReminder() }
     }
 
     suspend fun createRecord(draft: SmokingRecordDraft): SmokingRecordEntity? {
         val product = dao.getProduct(draft.productId) ?: return null
-        return createSmokingRecord.create(product, draft)
+        return createSmokingRecord.create(product, draft).also { refreshInactivityReminder() }
     }
 
     suspend fun updateRecord(
@@ -207,6 +211,13 @@ class NefesIziRepository @Inject constructor(
     private fun defaultCurrencyCode(): String = runCatching {
         Currency.getInstance(Locale.getDefault()).currencyCode
     }.getOrDefault("TRY")
+
+    private suspend fun refreshInactivityReminder() {
+        val settings = preferences.notifications.first()
+        if (settings.inactivityEnabled) {
+            notificationScheduler.scheduleInactivity(settings.inactivityDays)
+        }
+    }
 
     private fun ProductRevisionDraft.toEntity(
         productId: String,

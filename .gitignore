@@ -254,4 +254,3 @@ temp/
 !**/proguard-rules.pro
 !**/consumer-rules.pro
 !**/lint-baseline.xml
-/docs/IMPLEMENTATION_ROADMAP.md

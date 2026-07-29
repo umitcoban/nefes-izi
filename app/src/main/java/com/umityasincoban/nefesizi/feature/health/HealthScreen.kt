@@ -14,6 +14,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material.icons.automirrored.outlined.ArrowForwardIos
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
@@ -23,6 +26,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -70,6 +75,31 @@ fun HealthScreen(
             )
         }
         item {
+            Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = viewModel::previousDay) {
+                        Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Önceki gün")
+                    }
+                    OutlinedTextField(
+                        value = state.selectedDate,
+                        onValueChange = viewModel::updateDateText,
+                        modifier = Modifier.weight(1f),
+                        label = { Text("Gün") },
+                        singleLine = true,
+                    )
+                    TextButton(onClick = { viewModel.selectDate(state.selectedDate) }) {
+                        Text("Git")
+                    }
+                    TextButton(onClick = viewModel::nextDay) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowForwardIos, contentDescription = "Sonraki gün")
+                    }
+                }
+            }
+        }
+        item {
             Surface(
                 shape = RoundedCornerShape(28.dp),
                 color = MaterialTheme.colorScheme.secondary,
@@ -89,12 +119,13 @@ fun HealthScreen(
                             modifier = Modifier.padding(13.dp),
                         )
                     }
-                    Column(modifier = Modifier.padding(start = 14.dp)) {
-                        Text("Son 7 gün", style = MaterialTheme.typography.labelLarge)
-                        Text(
-                            "${state.recordedDaysLastWeek}/7 gün kayıtlı",
-                            style = MaterialTheme.typography.headlineMedium,
-                        )
+                    Row(
+                        modifier = Modifier.weight(1f).padding(start = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                    ) {
+                        SummaryCount("7 gün", state.recordedDays7)
+                        SummaryCount("14 gün", state.recordedDays14)
+                        SummaryCount("30 gün", state.recordedDays30)
                     }
                 }
             }
@@ -122,6 +153,24 @@ fun HealthScreen(
                 )
             }
         }
+        if (state.shortnessOfBreath == true || state.chestDiscomfort == true) {
+            item {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                ) {
+                    Row(Modifier.padding(15.dp), verticalAlignment = Alignment.Top) {
+                        Icon(Icons.Outlined.Info, contentDescription = null)
+                        Text(
+                            "Nefes darlığı veya göğüs rahatsızlığı önemli olabilir. " +
+                                "Belirti yeni, şiddetli ya da endişe vericiyse uygun sağlık desteğine başvur.",
+                            modifier = Modifier.padding(start = 10.dp),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
+                    }
+                }
+            }
+        }
         item {
             JournalCard("İstersen biraz daha") {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -140,6 +189,32 @@ fun HealthScreen(
                         Modifier.weight(1f),
                     )
                 }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    NumberField(
+                        state.systolicBloodPressure,
+                        viewModel::setSystolic,
+                        "Büyük tansiyon",
+                        "mmHg",
+                        Modifier.weight(1f),
+                    )
+                    NumberField(
+                        state.diastolicBloodPressure,
+                        viewModel::setDiastolic,
+                        "Küçük tansiyon",
+                        "mmHg",
+                        Modifier.weight(1f),
+                    )
+                }
+                OutlinedTextField(
+                    value = state.weightKg,
+                    onValueChange = viewModel::setWeight,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Kilo") },
+                    suffix = { Text("kg") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(18.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                )
                 OutlinedTextField(
                     value = state.note,
                     onValueChange = viewModel::setNote,
@@ -148,6 +223,67 @@ fun HealthScreen(
                     minLines = 3,
                     shape = RoundedCornerShape(18.dp),
                 )
+            }
+        }
+        if (state.errors.isNotEmpty() || state.warnings.isNotEmpty()) {
+            item {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = if (state.errors.isNotEmpty()) {
+                        MaterialTheme.colorScheme.errorContainer
+                    } else {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    },
+                ) {
+                    Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        (state.errors + state.warnings).forEach { Text("• $it") }
+                        if (state.warnings.isNotEmpty()) {
+                            Text(
+                                "Bu bir teşhis değildir; yalnızca olası giriş hatasını tekrar kontrol etmen içindir.",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        if (state.associations.isNotEmpty()) {
+            item {
+                JournalCard("Kayıtlar birlikte nasıl değişiyor?") {
+                    state.associations.forEach { association ->
+                        Text(association.text, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            association.caveat,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        HorizontalDivider()
+                    }
+                }
+            }
+        } else {
+            item {
+                Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                    Row(Modifier.padding(15.dp), verticalAlignment = Alignment.Top) {
+                        Icon(Icons.Outlined.Info, contentDescription = null)
+                        Text(
+                            "İlişki özeti için en az 14 ortak kayıtlı gün ve karşılaştırılan her grupta en az 5 gün gerekli.",
+                            modifier = Modifier.padding(start = 10.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+        if (state.noteHistory.isNotEmpty()) {
+            item {
+                JournalCard("Not geçmişi") {
+                    state.noteHistory.take(5).forEach { entry ->
+                        Text(entry.entryDate, style = MaterialTheme.typography.labelLarge)
+                        Text(entry.note.orEmpty())
+                        HorizontalDivider()
+                    }
+                }
             }
         }
         item {
@@ -174,13 +310,29 @@ fun HealthScreen(
         }
         item {
             Button(
-                onClick = viewModel::save,
+                onClick = {
+                    viewModel.save(confirmWarnings = state.warningConfirmationRequired)
+                },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !state.isSaving,
             ) {
-                Text(if (state.isSaving) "Kaydediliyor…" else "Bugünün notunu kaydet")
+                Text(
+                    when {
+                        state.isSaving -> "Kaydediliyor…"
+                        state.warningConfirmationRequired -> "Kontrol ettim, yine de kaydet"
+                        else -> "Sağlık notunu kaydet"
+                    },
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun SummaryCount(label: String, count: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("$count", style = MaterialTheme.typography.headlineSmall)
+        Text(label, style = MaterialTheme.typography.labelMedium)
     }
 }
 

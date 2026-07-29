@@ -125,5 +125,19 @@ object DatabaseMigrations {
         }
     }
 
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE `daily_health_entries` ADD COLUMN `systolicBloodPressure` INTEGER",
+            )
+            db.execSQL(
+                "ALTER TABLE `daily_health_entries` ADD COLUMN `diastolicBloodPressure` INTEGER",
+            )
+            db.execSQL(
+                "ALTER TABLE `daily_health_entries` ADD COLUMN `weightGrams` INTEGER",
+            )
+        }
+    }
+
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 }

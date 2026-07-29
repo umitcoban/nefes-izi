@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -24,6 +25,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import com.umityasincoban.nefesizi.core.backup.ImportMode
+import android.Manifest
+import android.os.Build
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.biometric.BiometricPrompt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -38,9 +53,59 @@ import com.umityasincoban.nefesizi.core.database.CigaretteProductEntity
 @Composable
 fun SettingsScreen(
     onOpenProducts: () -> Unit,
+    snackbarHostState: SnackbarHostState,
     viewModel: SettingsViewModel = hiltViewModel(),
+    backupViewModel: BackupViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    val backupState by backupViewModel.state.collectAsState()
+    val context = LocalContext.current
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> viewModel.setEveningNotification(granted) }
+    val weeklyPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> viewModel.setWeeklyNotification(granted) }
+    val inactivityPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> viewModel.setInactivityNotification(granted) }
+    val biometricPrompt = remember(context) {
+        val activity = context as FragmentActivity
+        BiometricPrompt(
+            activity,
+            ContextCompat.getMainExecutor(context),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(
+                    result: BiometricPrompt.AuthenticationResult,
+                ) {
+                    viewModel.setBiometricLock(true)
+                }
+            },
+        )
+    }
+    val biometricPromptInfo = remember {
+        BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Nefes İzi uygulama kilidi")
+            .setSubtitle("Bu özellik yalnızca uygulamaya erişimi sınırlar; veritabanını şifrelemez.")
+            .setAllowedAuthenticators(
+                androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                    androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL,
+            )
+            .build()
+    }
+    val jsonExport = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri -> uri?.let(backupViewModel::exportJson) }
+    val csvExport = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip"),
+    ) { uri -> uri?.let(backupViewModel::exportCsv) }
+    val importFile = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let(backupViewModel::previewImport) }
+
+    LaunchedEffect(Unit) {
+        backupViewModel.effects.collect { snackbarHostState.showSnackbar(it) }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -79,6 +144,12 @@ fun SettingsScreen(
                         )
                     }
                 }
+                PreferenceSwitch(
+                    title = "Dinamik renk",
+                    supporting = "Desteklenen cihazlarda sistem renklerini kullan",
+                    checked = state.personalization.dynamicColor,
+                    onCheckedChange = viewModel::setDynamicColor,
+                )
             }
         }
         item {
@@ -105,6 +176,47 @@ fun SettingsScreen(
                         Text("Analizde ilk kayda kadar süreyi hesaplamak için kullanılır.")
                     },
                     singleLine = true,
+                )
+                PreferenceSwitch(
+                    title = "Sağlık sekmesi",
+                    supporting = "Alt navigasyonda sağlık günlüğünü göster",
+                    checked = state.personalization.showHealthTab,
+                    onCheckedChange = viewModel::setShowHealthTab,
+                )
+                Text("Gün başlangıcı", style = MaterialTheme.typography.titleMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    listOf(0, 4, 6).forEach { hour ->
+                        FilterChip(
+                            selected = state.personalization.dayStartHour == hour,
+                            onClick = { viewModel.setDayStartHour(hour) },
+                            label = { Text("%02d:00".format(hour)) },
+                        )
+                    }
+                }
+                Text("Haftanın ilk günü", style = MaterialTheme.typography.titleMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    listOf("MONDAY" to "Pazartesi", "SUNDAY" to "Pazar").forEach { (value, label) ->
+                        FilterChip(
+                            selected = state.personalization.firstDayOfWeek == value,
+                            onClick = { viewModel.setFirstDayOfWeek(value) },
+                            label = { Text(label) },
+                        )
+                    }
+                }
+                Text("Tercih edilen para birimi", style = MaterialTheme.typography.titleMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    listOf("TRY", "EUR", "USD").forEach { code ->
+                        FilterChip(
+                            selected = state.personalization.preferredCurrency == code,
+                            onClick = { viewModel.setCurrency(code) },
+                            label = { Text(code) },
+                        )
+                    }
+                }
+                Text(
+                    "Bu tercih geçmiş kayıtların para birimi snapshot’larını dönüştürmez.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -139,6 +251,103 @@ fun SettingsScreen(
                     "Kayıtların yalnızca bu cihazdaki Room veritabanında tutulur. Android bulut yedeklemesi kapalıdır.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                PreferenceSwitch(
+                    title = "Uygulama kilidi",
+                    supporting = if (state.biometricSupported) {
+                        "Arka plandan dönüşte biyometri veya cihaz kilidi iste"
+                    } else {
+                        "Bu cihazda uygun biyometri/cihaz kilidi bulunmuyor"
+                    },
+                    checked = state.personalization.biometricLock,
+                    onCheckedChange = { enabled ->
+                        if (!enabled) viewModel.setBiometricLock(false)
+                        else if (state.biometricSupported) biometricPrompt.authenticate(biometricPromptInfo)
+                    },
+                )
+                Text(
+                    "Uygulama kilidi bir erişim kapısıdır; cihazdaki Room verisini ayrıca şifrelediği anlamına gelmez.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        item {
+            SettingsCard(Icons.Outlined.FavoriteBorder, "Bildirimler") {
+                PreferenceSwitch(
+                    title = "Akşam özeti",
+                    supporting = "Günün kayıtlarına bakmak için tarafsız hatırlatma",
+                    checked = state.notifications.eveningEnabled,
+                    onCheckedChange = { enabled ->
+                        if (enabled && Build.VERSION.SDK_INT >= 33) {
+                            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            viewModel.setEveningNotification(enabled)
+                        }
+                    },
+                )
+                if (state.notifications.eveningEnabled) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        listOf("20:00", "21:00", "22:00").forEach { value ->
+                            FilterChip(
+                                selected = state.notifications.eveningTime == value,
+                                onClick = { viewModel.setEveningTime(value) },
+                                label = { Text(value) },
+                            )
+                        }
+                    }
+                }
+                PreferenceSwitch(
+                    title = "Haftalık özet",
+                    supporting = "Pazar akşamı haftalık kayıt özeti",
+                    checked = state.notifications.weeklyEnabled,
+                    onCheckedChange = { enabled ->
+                        if (enabled && Build.VERSION.SDK_INT >= 33) {
+                            weeklyPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            viewModel.setWeeklyNotification(enabled)
+                        }
+                    },
+                )
+                PreferenceSwitch(
+                    title = "Kayıt arası hatırlatma",
+                    supporting = "${state.notifications.inactivityDays} gün kayıt olmazsa hatırlat",
+                    checked = state.notifications.inactivityEnabled,
+                    onCheckedChange = { enabled ->
+                        if (enabled && Build.VERSION.SDK_INT >= 33) {
+                            inactivityPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            viewModel.setInactivityNotification(enabled)
+                        }
+                    },
+                )
+                Text(
+                    "Bildirimler varsayılan olarak kapalıdır ve yargılayıcı hedef mesajları içermez.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        item {
+            SettingsCard(Icons.Outlined.Storage, "Yerel yedekleme") {
+                Text(
+                    "Dosyalar yalnızca seçtiğin konuma yazılır. Geniş depolama izni kullanılmaz.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = { jsonExport.launch("nefes-izi-yedek.json") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !backupState.isWorking,
+                ) { Text("JSON yedeği dışa aktar") }
+                Button(
+                    onClick = { csvExport.launch("nefes-izi-csv.zip") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !backupState.isWorking,
+                ) { Text("CSV arşivi dışa aktar") }
+                Button(
+                    onClick = { importFile.launch(arrayOf("application/json", "text/plain")) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !backupState.isWorking,
+                ) { Text("JSON yedeğini içe aktar") }
             }
         }
         item {
@@ -160,6 +369,44 @@ fun SettingsScreen(
         }
     }
 
+    backupState.preview?.let { preview ->
+        AlertDialog(
+            onDismissRequest = backupViewModel::dismissPreview,
+            title = { Text(if (preview.canReplace) "Yedek hazır" else "Yedek içe aktarılamıyor") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    preview.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    preview.validation?.let {
+                        Text("${it.productCount} ürün · ${it.recordCount} kayıt · ${it.healthEntryCount} sağlık günü")
+                        it.errors.forEach { error ->
+                            Text("• $error", color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    Text("${preview.duplicateCount} aynı kayıt atlanacak · ${preview.conflictCount} çakışma")
+                    if (preview.conflictCount > 0) {
+                        Text("Aynı kimlikte farklı içerik otomatik olarak ezilmez.")
+                    }
+                }
+            },
+            confirmButton = {
+                if (preview.canMerge) {
+                    TextButton(onClick = { backupViewModel.applyImport(ImportMode.MERGE) }) {
+                        Text("Birleştir")
+                    }
+                }
+            },
+            dismissButton = {
+                Row {
+                    if (preview.canReplace) {
+                        TextButton(onClick = { backupViewModel.applyImport(ImportMode.REPLACE) }) {
+                            Text("Yerine koy")
+                        }
+                    }
+                    TextButton(onClick = backupViewModel::dismissPreview) { Text("Vazgeç") }
+                }
+            },
+        )
+    }
 }
 
 @Composable
